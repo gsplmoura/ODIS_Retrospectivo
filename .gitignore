@@ -1,0 +1,62 @@
+# IGNORE DATA FOLDERS
+/data/
+/data_backup/
+/data_output/
+
+# Ignore macOS system files
+.DS_Store
+
+# Ignore Windows system files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+System Volume Information/
+
+# Ignore Windows executables and temp files
+*.exe
+*.dll
+*.lnk
+*.ini
+*.bat
+*.cmd
+*.msi
+*.sys
+*.com
+*.vbs
+*.reg
+
+# Ignore VS Code settings
+.vscode/
+*.code-workspace
+
+# Ignore logs and temp files
+*.log
+*.out
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# Ignore R and RStudio files
+.Rhistory
+.RData
+.Rproj.user/
+.Rproj.user
+
+# Ignore unnecessary Git files
+.git/
+
+# Ignore Python virtual environment files
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore temporary Office files (Word, Excel, etc.)
+~$*
