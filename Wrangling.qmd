@@ -1,0 +1,290 @@
+---
+title: "Wrangling"
+format: html
+---
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(janitor)
+library(here)
+library(skimr)
+library(lubridate)
+```
+
+# Patients
+
+```{r}
+patients <- read_delim(here("data","Levantamento_GLPI_58686_Sol_123_2023_Pacientes.csv"), delim = ";") %>% 
+  janitor::clean_names() %>%
+  mutate(
+    birthdate = dmy(dta_nascimento),
+    race = as.factor(raca_etnia),
+    sex = as.factor(idf_sexo),
+    death_date = dmy(dta_obito),
+    date = dmy(dta_hor_consulta)
+  ) %>%
+  arrange(desc(death_date)) %>%
+  select(
+    record_id = registro,
+    birthdate,
+    race,
+    sex,
+    death_date
+  ) %>% 
+  distinct(record_id, .keep_all = TRUE)
+
+skimr::skim(patients)
+```
+
+The patients dataset consists of *872 unique participants* and 5 variables, encompassing patient identifiers, demographic characteristics, and dates of birth and death. The `record_id` variable (character) serves as a unique identifier, with all values having a fixed length of 8 characters and no missing data. The dataset includes two date variables: `birthdate`, which is fully complete and ranges from January 18, 1927, to November 30, 2014, with a median birthdate of January 29, 1975; and `death_date`, which has *785 missing values (89.9%)*, indicating that most participants are still alive. The `race` variable (factor) has 5 categories, with the most common being “Branco” (white, 664 participants), followed by “Pardo” (mixed-race, 129 participants) and “Preto” (Black, 72 participants). The `sex` variable (factor) has two categories, with 553 females (63.4%) and 319 males (36.6%). The dataset is well-structured, with complete demographic information and some missing data in the mortality records.
+
+# Consultations
+
+```{r}
+consultas <- read_delim(here("data","Levantamento_GLPI_58686_Sol_123_2023_Pacientes.csv"), delim = ";") %>% 
+  janitor::clean_names() %>%
+  mutate(
+    date = dmy(dta_hor_consulta),
+  ) %>%
+  select(
+    record_id = registro,
+    date) %>% 
+  mutate(
+    age = as.numeric( # Converts duration object to numeric value
+      (date - patients$birthdate) / dyears(1) # dyears(1) from lubridate: represents the duration of one year (365.25 days), ensuring leap years are accounted for.
+      )
+    )
+
+skimr::skim(consultas)
+```
+
+The consultas dataset contains 5,212 observations across 2 variables, representing multiple consultation records for 872 unique participants. The record_id variable (character) serves as a unique identifier for each patient, with all values having a fixed length of 8 characters and no missing data. The date variable (Date) captures the consultation dates, spanning from January 19, 2016, to October 24, 2023, with 367 unique dates. The dataset is fully complete, with no missing values, and provides a structured timeline of patient consultations.
+
+## Age at consultation (optional)
+
+```{r, eval=FALSE}
+underage <- consultas %>% 
+    filter( age < 18
+    ) %>% 
+  distinct(record_id, .keep_all = TRUE)
+
+sum(consultas$age < 18)
+
+adults <- consultas %>% 
+    filter( age >= 18
+    ) %>% 
+  distinct(record_id, .keep_all = TRUE)
+
+common_record_ids <- intersect(underage$record_id, adults$record_id)
+```
+
+A total of 146 patients were seen in the clinic while underage, accounting for 168 consultations. Of these, 138 continued follow-up after reaching adulthood, leaving only 8 patients who remained underage throughout the entire follow-up period.
+
+# Anthropometric measures
+
+```{r}
+monitorizacao <- read_excel(here("data","Levantamento_GLPI_58686_Sol_123_2023_Monitorizacao_Isabela.xlsx"), sheet = 1) %>% 
+  select(
+    record_id, type, date, value
+  )
+
+weight <- monitorizacao %>% 
+  filter(
+    type == "weight_kg"
+  ) %>% 
+  select(
+    record_id, date, value
+  ) %>% 
+  rename(
+    weight_kg = value
+  )
+
+alturas_faltantes <- read_excel(here("data","alturas_faltantes.xlsx")) %>% janitor::clean_names() %>% 
+  filter(
+    !is.na(altura_metros_ponto_como_separador_decimal)
+  ) %>% 
+  select(
+    record_id = registro,
+    height_m = altura_metros_ponto_como_separador_decimal
+    ) %>% 
+  mutate(
+    date = as.POSIXct(NA)
+    )
+
+height <- monitorizacao %>% 
+  filter(
+    type == "height_m"
+    ) %>% 
+  select(
+    record_id, date, value
+  ) %>% 
+  rename(
+    height_m = value
+  ) %>% 
+  rbind(., alturas_faltantes) %>% 
+  mutate(
+    height_m = as.numeric(height_m)
+  )
+
+rm(monitorizacao)
+rm(alturas_faltantes)
+```
+
+## Height
+
+```{r}
+skimr::skim(height)
+ggplot(height, aes(height_m)) + geom_histogram()
+```
+
+The height dataset contains **5,066 observations** across **3 variables**, representing repeated height measurements for **856 unique participants** over time. The `record_id` variable (character) serves as a unique identifier for each participant. The `height_m` variable (numeric) records height in meters, with values ranging from **0.2 to 1.96 meters**, a mean of **1.64 meters**, and a standard deviation of **0.121**. No missing values are present in this column. The `date` variable (POSIXct) captures the measurement date, spanning from **January 21, 2016, to October 26, 2023**, with **1,355 unique dates**. The dataset is complete, except for **76 missing values in the date column**, resulting in a **98.5% completeness rate** for dates. These missing values correspond to height measurements that were **not originally included in the dataset exported by the hospital’s data center** but were **manually collected from records**.
+
+### Grouping by record_id
+
+```{r}
+height_summarise <- height %>% 
+  group_by(record_id) %>% 
+  summarise(
+    count_age = n(),
+    mean_age = mean(height_m, na.rm = TRUE),
+    stdev_age = stats::sd(height_m, na.rm = TRUE)
+  ) %>% 
+      ungroup()
+```
+
+
+## Weight
+
+```{r}
+skimr::skim(weight)
+ggplot(weight, aes(weight_kg)) + geom_histogram()
+```
+
+The weight dataset contains **15,792 observations** across **3 variables**, representing repeated weight measurements for **862 unique participants** over time. The record_id variable (character) uniquely identifies each participant. The weight_kg variable (numeric) captures weight in kilograms, ranging from **6 to 300 kg**, with a mean of **112 kg** and a standard deviation of **40.3 kg**. No missing values are present in this column. The date variable (POSIXct) records the measurement date, spanning from **January 19, 2016, to October 26, 2023**, with **2,053 unique dates**. The dataset is complete, with no missing values in any column.
+
+# Joining consultations, height and weight
+
+Issue:
+
+I want to create a new df based on `consultas` such that this new df will have 2 additional columns, `height_m` and `weight_kg`. Naturally, `height_m` and `weight_kg` should be matched by record_id. However, this is a longitudinal database, so `record_id` might appear multiple times in the spreadsheets.
+
+Ideally, the new df shoudl have the `height_m` and `weight_kg` that matches the record_id as well as the `date`. However, some rows from consultas might not have exact date matches for `height_m` and `weight_kg`. In that case, the new df should match `height_m` and `weight_kg` by the date closest to the actual date of the consultation. 
+
+There are several solutions to this problem: using `fuzzyjoin`, `data.table`, or `purr`. If you’re looking for the simplest approach, fuzzyjoin is the easiest to learn as it closely follows dplyr syntax and allows fuzzy matching with minimal effort. If speed and efficiency are your priority, especially with large datasets, data.table is the fastest, using optimized rolling joins (roll = "nearest") but has a steeper learning curve. For a pure Tidyverse solution, purrr offers the most flexibility but requires complex row-wise operations and is harder to master.
+
+## Height
+
+```{r}
+library(fuzzyjoin)
+
+# Perform the fuzzy join on record_id
+fuzzy_height <- fuzzy_left_join(
+  consultas, height,
+  by = c("record_id" = "record_id"),
+  match_fun = list(`==`)
+)
+
+# Checking the column names in joined_df: you'll see "record_id.x" from consultas and "record_id.y" from height.
+
+# Compute the absolute date difference using the consultation date (date.x) and the height date (date.y)
+fuzzy_height <- fuzzy_height %>% 
+  mutate(date_diff = abs(as.numeric(difftime(date.x, date.y, units = "days"))))
+
+# For each consultation (identified by record_id.x and the consultation date date.x), select the row with the minimum date difference.
+consultas_new <- fuzzy_height %>% 
+  group_by(record_id.x, date.x) %>% 
+  slice_min(order_by = date_diff, with_ties = FALSE) %>% 
+  ungroup() %>%
+  # Rename columns for clarity
+  rename(record_id = record_id.x,
+         consult_date = date.x,
+         date_diff_height = date_diff) %>% 
+  mutate(
+    height_date = as.Date(date.y)
+  ) %>% 
+  select(
+    record_id, consult_date, age, height_date, height_m, date_diff_height
+  )
+```
+
+## Weight
+
+We'll follow a similar process to the height join. The idea is to perform a fuzzy join on `record_id`, calculate the absolute difference between the consultation date (already stored as `consult_date` in `consultas_new` and the weight measurement date (stored in weight's date, then for each consultation choose the weight record with the minimum difference.
+
+```{r}
+
+# Perform the fuzzy join on record_id for weight
+fuzzy_weight <- fuzzy_left_join(
+  consultas_new, weight,
+  by = c("record_id" = "record_id"),
+  match_fun = list(`==`)
+)
+
+# Compute the absolute date difference using the consultation date (consult_date) and the weight measurement date (date from weight)
+fuzzy_weight <- fuzzy_weight %>% 
+  mutate(date_diff = abs(as.numeric(difftime(consult_date, date, units = "days"))))
+
+# For each consultation (identified by record_id.x and consult_date), select the row with the minimum date difference
+
+consultas_final <- fuzzy_weight %>% 
+  group_by(record_id.x, consult_date) %>% 
+  slice_min(order_by = date_diff, with_ties = FALSE) %>% 
+  ungroup() %>%
+  # Rename columns for clarity
+  rename(record_id = record_id.x,
+         date_diff_weight = date_diff) %>%
+  mutate(
+    bmi = weight_kg / (height_m * height_m),
+    weight_date = as.Date(date)
+  ) %>% 
+  select(record_id, consult_date, age, bmi, height_date, height_m, date_diff_height, weight_date, weight_kg, date_diff_weight)
+
+```
+
+## Consultas_final
+
+```{r}
+glimpse(consultas_final)
+``` 
+### Tuesday, March 18, 2025
+
+skimr::skim(consultas_final)
+── Data Summary ────────────────────────
+                           Values         
+Name                       consultas_final
+Number of rows             5202           
+Number of columns          10             
+_______________________                   
+Column type frequency:                    
+  character                1              
+  Date                     3              
+  numeric                  6              
+________________________                  
+Group variables            None           
+
+── Variable type: character ───────────────────────────────────────────────────────────────────────────────────
+  skim_variable n_missing complete_rate min max empty n_unique whitespace
+1 record_id             0             1   8   8     0      872          0
+
+── Variable type: Date ────────────────────────────────────────────────────────────────────────────────────────
+  skim_variable n_missing complete_rate min        max        median     n_unique
+1 consult_date          0         1     2016-01-19 2023-10-24 2019-05-21      367
+2 height_date         199         0.962 2016-01-28 2023-10-26 2019-05-21      585
+3 weight_date          13         0.998 2016-01-19 2023-10-24 2019-05-21      612
+
+── Variable type: numeric ─────────────────────────────────────────────────────────────────────────────────────
+  skim_variable    n_missing complete_rate   mean      sd    p0   p25    p50    p75    p100 hist 
+1 age                      0         1      45.3   15.2   1.54  34.6   44.5   56.1    95.9  ▁▆▇▃▁
+2 bmi                     27         0.995  43.4   22.2   4.48  30.5   41.9   53.9   726.   ▇▁▁▁▁
+3 height_m                26         0.995   1.64   0.123 0.358  1.57   1.64   1.72    1.96 ▁▁▁▇▇
+4 date_diff_height       199         0.962 159.   263.    0      0     63    203    2667    ▇▁▁▁▁
+5 weight_kg               13         0.998 116.    43.1   6     81.6  110.   145     294.   ▂▇▆▂▁
+6 date_diff_weight        13         0.998  37.1  116.    0      0      0      0    2487    ▇▁▁▁▁
+
+There are some obvious issues that need to be addressed in the dataset. Therefore, I'm exporting `consultas_final` as a csv file to analyse inconsistencies. These inconsistencies will be corrected in the data frames. For this purpose, I pasted the result of skimr::skim(consultas_final) for today, allowing for future comparisons. Additionally, the data on `Levantamento_GLPI_58686_Sol_123_2023_Monitorizacao_Isabela.xlsx` will be duplicated in another sheet, as to allow for future audits on the corrections and comparisons to the original dataset.
+
+```{r, eval = false}
+write_excel_csv(consultas_final, here("data_output", "consultas_final.csv"))
+```
+

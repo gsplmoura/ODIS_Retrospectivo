@@ -1,0 +1,110 @@
+project:
+  title: "My Research Project"
+  type: default
+site: "https://github.com/gsplmoura"
+author:
+  - name: "**Gustavo Santos Paiva Laender Moura**"
+    affiliation: "University of São Paulo, Ribeirão Preto Medical School, Department of Internal Medicine"
+    email: "gsplmoura@usp.br"
+date: today
+
+# Execution Options (Controls Code Execution)
+execute:
+  eval: true
+  echo: true
+  output: true
+  warning: false
+  message: false
+  error: false
+  cache: true
+  freeze: auto
+  fig-width: 7
+  fig-height: 5
+  dpi: 300
+  fig-format: png
+
+# Formatting Options for Output
+format:
+  html:
+    theme: flatly
+    toc: true
+    toc-depth: 5
+    toc-location: left
+    number-sections: true
+    highlight-style: github
+    code-fold: false
+    smooth-scroll: true
+    citations-hover: true
+    reference-location: margin
+
+  pdf:
+    documentclass: article
+    toc: true
+    toc-depth: 4
+    number-sections: true
+    keep-tex: true
+    fig-pos: "H"
+
+  docx:
+    reference-doc: "template.docx"
+    number-sections: true
+
+  markdown:
+    variant: gfm
+    preserve-yaml: true
+
+# Language Settings
+lang: en
+lang-title: "Title"
+lang-abstract: "Abstract"
+
+# Citations and References
+bibliography:
+  - Library/BibTeX/article.bib
+  - Library/BibTeX/book.bib
+  - Library/BibTeX/booklet.bib
+  - Library/BibTeX/conference.bib
+  - Library/BibTeX/inbook.bib
+  - Library/BibTeX/incollection.bib
+  - Library/BibTeX/inproceedings.bib
+  - Library/BibTeX/manual.bib
+  - Library/BibTeX/mastersthesis.bib
+  - Library/BibTeX/misc.bib
+  - Library/BibTeX/phdthesis.bib
+  - Library/BibTeX/proceedings.bib
+  - Library/BibTeX/techreport.bib
+  - Library/BibTeX/unpublished.bib
+#csl: apa.csl
+link-citations: true
+link-bibliography: true
+
+# Code Block Defaults
+knitr:
+  opts_chunk:
+    dev: "png"
+    fig.align: "center"
+    fig.width: 6
+    fig.height: 4
+
+# Cross-referencing
+crossref:
+  fig-prefix: "Figure"
+  tbl-prefix: "Table"
+  eq-prefix: "Equation"
+
+# Quarto Extensions
+#filters:
+#  - citations
+#  - crossref
+#  - knitr
+
+# License Information
+license: "CC BY 4.0"
+
+# Custom Variables
+params:
+  data_source: "dataset.csv"
+  analysis_type: "regression"
+
+# Output Directory
+#output-dir: "outputs"

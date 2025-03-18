@@ -61,3 +61,4 @@ __pycache__/
 
 # Ignore temporary Office files (Word, Excel, etc.)
 ~$*
+/.quarto/
