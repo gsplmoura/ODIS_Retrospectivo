@@ -1,0 +1,1856 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.5.56">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Gustavo Santos Paiva Laender Moura">
+<meta name="dcterms.date" content="2025-08-21">
+
+<title>ODIS Retrospectivo Data Analysis</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="2_obesity_files/libs/clipboard/clipboard.min.js"></script>
+<script src="2_obesity_files/libs/quarto-html/quarto.js"></script>
+<script src="2_obesity_files/libs/quarto-html/popper.min.js"></script>
+<script src="2_obesity_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="2_obesity_files/libs/quarto-html/anchor.min.js"></script>
+<link href="2_obesity_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="2_obesity_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="2_obesity_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="2_obesity_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="2_obesity_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<style>html{ scroll-behavior: smooth; }</style>
+
+
+</head>
+
+<body>
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article toc-left">
+<div id="quarto-sidebar-toc-left" class="sidebar toc-left">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#consultas" id="toc-consultas" class="nav-link active" data-scroll-target="#consultas">Consultas</a></li>
+  <li><a href="#filtrando-a-amostra" id="toc-filtrando-a-amostra" class="nav-link" data-scroll-target="#filtrando-a-amostra">Filtrando a amostra</a>
+  <ul>
+  <li><a href="#por-imc" id="toc-por-imc" class="nav-link" data-scroll-target="#por-imc">Por IMC</a></li>
+  <li><a href="#por-idade" id="toc-por-idade" class="nav-link" data-scroll-target="#por-idade">Por idade</a>
+  <ul>
+  <li><a href="#interseção-evalfalse" id="toc-interseção-evalfalse" class="nav-link" data-scroll-target="#interseção-evalfalse">Interseção (eval=false)</a></li>
+  <li><a href="#exclusão-de-pacientes-menores-de-idade" id="toc-exclusão-de-pacientes-menores-de-idade" class="nav-link" data-scroll-target="#exclusão-de-pacientes-menores-de-idade">Exclusão de pacientes menores de idade</a></li>
+  </ul></li>
+  <li><a href="#consultas-1" id="toc-consultas-1" class="nav-link" data-scroll-target="#consultas-1">≥ 2 consultas</a>
+  <ul>
+  <li><a href="#pipe-table" id="toc-pipe-table" class="nav-link" data-scroll-target="#pipe-table">Pipe table</a></li>
+  </ul></li>
+  </ul></li>
+  <li><a href="#objetivos" id="toc-objetivos" class="nav-link" data-scroll-target="#objetivos">Objetivos</a>
+  <ul>
+  <li><a href="#objetivo-geral" id="toc-objetivo-geral" class="nav-link" data-scroll-target="#objetivo-geral">Objetivo Geral</a></li>
+  <li><a href="#escolha-do-dataset" id="toc-escolha-do-dataset" class="nav-link" data-scroll-target="#escolha-do-dataset">Escolha do dataset</a></li>
+  <li><a href="#componente-descritivo" id="toc-componente-descritivo" class="nav-link" data-scroll-target="#componente-descritivo">1. Componente descritivo</a>
+  <ul>
+  <li><a href="#perfil-epidemiológico-na-primeira-consulta-idade-sexo-etnia-imc-comorbidades." id="toc-perfil-epidemiológico-na-primeira-consulta-idade-sexo-etnia-imc-comorbidades." class="nav-link" data-scroll-target="#perfil-epidemiológico-na-primeira-consulta-idade-sexo-etnia-imc-comorbidades.">1.1. Perfil epidemiológico na primeira consulta: idade, sexo, etnia, IMC, comorbidades.</a></li>
+  <li><a href="#indicadores-de-atendimento-número-de-consultas-e-tempo-de-seguimento." id="toc-indicadores-de-atendimento-número-de-consultas-e-tempo-de-seguimento." class="nav-link" data-scroll-target="#indicadores-de-atendimento-número-de-consultas-e-tempo-de-seguimento.">1.3. Indicadores de atendimento: número de consultas e tempo de seguimento.</a></li>
+  <li><a href="#proporção-de-indivíduos-com-peso-final-maior-que-o-inicial." id="toc-proporção-de-indivíduos-com-peso-final-maior-que-o-inicial." class="nav-link" data-scroll-target="#proporção-de-indivíduos-com-peso-final-maior-que-o-inicial.">1.6. Proporção de indivíduos com peso final maior que o inicial.</a></li>
+  <li><a href="#proporção-de-consultas-a-partir-da-segunda-com-ganho-ou-perda-de-peso-em-relação-à-anterior." id="toc-proporção-de-consultas-a-partir-da-segunda-com-ganho-ou-perda-de-peso-em-relação-à-anterior." class="nav-link" data-scroll-target="#proporção-de-consultas-a-partir-da-segunda-com-ganho-ou-perda-de-peso-em-relação-à-anterior.">1.7. Proporção de consultas (a partir da segunda) com ganho ou perda de peso em relação à anterior.</a></li>
+  </ul></li>
+  <li><a href="#análises-pelo-tempo-de-seguimento" id="toc-análises-pelo-tempo-de-seguimento" class="nav-link" data-scroll-target="#análises-pelo-tempo-de-seguimento">2. Análises pelo tempo de seguimento</a>
+  <ul>
+  <li><a href="#comparar-a-porcentagem-máxima-de-perda-de-peso-entre-seguimento-12-meses-e-12-meses-ajustando-por-sexo-etnia-idade-imc-inicial-comorbidades-e-uso-de-medicação." id="toc-comparar-a-porcentagem-máxima-de-perda-de-peso-entre-seguimento-12-meses-e-12-meses-ajustando-por-sexo-etnia-idade-imc-inicial-comorbidades-e-uso-de-medicação." class="nav-link" data-scroll-target="#comparar-a-porcentagem-máxima-de-perda-de-peso-entre-seguimento-12-meses-e-12-meses-ajustando-por-sexo-etnia-idade-imc-inicial-comorbidades-e-uso-de-medicação.">2.1. Comparar a porcentagem máxima de perda de peso entre seguimento ≤12 meses e &gt;12 meses, ajustando por sexo, etnia, idade, IMC inicial, comorbidades e uso de medicação.</a></li>
+  <li><a href="#avaliar-associação-da-perda-de-peso-máxima-com-variáveis-demográficas-clínicas-e-de-seguimento." id="toc-avaliar-associação-da-perda-de-peso-máxima-com-variáveis-demográficas-clínicas-e-de-seguimento." class="nav-link" data-scroll-target="#avaliar-associação-da-perda-de-peso-máxima-com-variáveis-demográficas-clínicas-e-de-seguimento.">2.2. Avaliar associação da perda de peso máxima com variáveis demográficas, clínicas e de seguimento.</a></li>
+  <li><a href="#descrever-o-momento-em-que-cada-indivíduo-atingiu-5-de-perda-em-relação-ao-peso-inicial." id="toc-descrever-o-momento-em-que-cada-indivíduo-atingiu-5-de-perda-em-relação-ao-peso-inicial." class="nav-link" data-scroll-target="#descrever-o-momento-em-que-cada-indivíduo-atingiu-5-de-perda-em-relação-ao-peso-inicial.">2.3. Descrever o momento em que cada indivíduo atingiu ≥5% de perda em relação ao peso inicial.</a></li>
+  </ul></li>
+  <li><a href="#subgrupos-com-perda-5" id="toc-subgrupos-com-perda-5" class="nav-link" data-scroll-target="#subgrupos-com-perda-5">3. Subgrupos com perda ≥5%</a>
+  <ul>
+  <li><a href="#identificar-o-tempo-e-a-consulta-da-primeira-observação-de-perda-5." id="toc-identificar-o-tempo-e-a-consulta-da-primeira-observação-de-perda-5." class="nav-link" data-scroll-target="#identificar-o-tempo-e-a-consulta-da-primeira-observação-de-perda-5.">3.1. Identificar o tempo e a consulta da primeira observação de perda ≥5%.</a></li>
+  <li><a href="#medidas-de-frequência-de-reganho-de-peso-após-a-perda-5." id="toc-medidas-de-frequência-de-reganho-de-peso-após-a-perda-5." class="nav-link" data-scroll-target="#medidas-de-frequência-de-reganho-de-peso-após-a-perda-5.">3.2. Medidas de frequência de reganho de peso após a perda ≥5%.</a></li>
+  <li><a href="#comparar-a-perda-máxima-entre-subgrupos-6-meses-612-meses-12-meses." id="toc-comparar-a-perda-máxima-entre-subgrupos-6-meses-612-meses-12-meses." class="nav-link" data-scroll-target="#comparar-a-perda-máxima-entre-subgrupos-6-meses-612-meses-12-meses.">3.3. Comparar a perda máxima entre subgrupos (≤6 meses, 6–12 meses, &gt;12 meses).</a></li>
+  </ul></li>
+  <li><a href="#grupo-sem-perda-5" id="toc-grupo-sem-perda-5" class="nav-link" data-scroll-target="#grupo-sem-perda-5">4. Grupo sem perda ≥5%</a>
+  <ul>
+  <li><a href="#identificar-tempo-de-seguimento-e-consulta-com-maior-perda-observada." id="toc-identificar-tempo-de-seguimento-e-consulta-com-maior-perda-observada." class="nav-link" data-scroll-target="#identificar-tempo-de-seguimento-e-consulta-com-maior-perda-observada.">4.1. Identificar tempo de seguimento e consulta com maior perda observada.</a></li>
+  <li><a href="#descrever-o-ganho-de-peso-após-esse-momento." id="toc-descrever-o-ganho-de-peso-após-esse-momento." class="nav-link" data-scroll-target="#descrever-o-ganho-de-peso-após-esse-momento.">4.2. Descrever o ganho de peso após esse momento.</a></li>
+  </ul></li>
+  </ul></li>
+  </ul>
+<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="2_obesity.pdf"><i class="bi bi-file-pdf"></i>PDF</a></li></ul></div></nav>
+</div>
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">ODIS Retrospectivo Data Analysis</h1>
+<p class="subtitle lead">Análise dos dados dos pacientes com obesidade</p>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Gustavo Santos Paiva Laender Moura </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">August 21, 2025</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<div class="cell" data-layout-align="center">
+<div style="page-break-after: always;"></div>
+</div>
+<section id="consultas" class="level1">
+<h1>Consultas</h1>
+<div class="cell" data-layout-align="center">
+<div class="cell-output cell-output-stderr">
+<pre><code>Rows: 17 Columns: 4
+── Column specification ────────────────────────────────────────────────────────
+Delimiter: ","
+chr (4): variable, type, levels, description
+
+ℹ Use `spec()` to retrieve the full column specification for this data.
+ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
+</div>
+</div>
+<p>O banco de dados <code>consultas</code> reúne 5.202 observações referentes a consultas médicas de 872 pacientes distintos, identificados de forma única pela variável record_id. O conjunto contém 17 variáveis, abrangendo informações sociodemográficas, datas de atendimento, medidas antropométricas e indicadores derivados do seguimento longitudinal. As variáveis incluem dados fixos, como birthdate (data de nascimento), sex e race, além de variáveis temporais (date_consultation, date_weight, baseline_date) que permitem acompanhar a evolução clínica ao longo do tempo. Foram incorporadas medidas diretas, como weight_kg e height_m, e variáveis calculadas, como o índice de massa corporal (bmi) e a perda percentual de peso em relação ao valor basal (percent_weight_loss).</p>
+<p>O dataset apresenta algumas particularidades em termos de completude: enquanto variáveis como age, sex e race estão completas para todos os registros, há proporções relevantes de dados faltantes em weight_kg (cerca de 20%) e, consequentemente, em variáveis derivadas como bmi e percent_weight_loss. A variável height_m, definida pela mediana das medidas disponíveis por paciente ou complementada via prontuário, apresenta taxa de preenchimento próxima de 100%. As medidas temporais mostram amplitude de acompanhamento de janeiro de 2016 a outubro de 2023, com variação importante no número de consultas por paciente (mediana de 4 consultas, podendo chegar a mais de 30).</p>
+<p>Em síntese, consultas constitui uma base de dados longitudinal, estruturada de modo que cada linha representa uma consulta de um paciente em determinada data, trazendo consigo tanto informações fixas (características do indivíduo) quanto variáveis dinâmicas (peso, IMC, perda relativa de peso), permitindo análises temporais da trajetória clínica dos indivíduos.</p>
+</section>
+<section id="filtrando-a-amostra" class="level1">
+<h1>Filtrando a amostra</h1>
+<section id="por-imc" class="level2">
+<h2 class="anchored" data-anchor-id="por-imc">Por IMC</h2>
+<p>Esse código cria um novo dataframe chamado <code>consultas_bmi</code> a partir do dataframe <code>consultas</code>, selecionando apenas os pacientes que em algum momento do seguimento apresentaram IMC ≥ 30 kg/m² (critério de obesidade).</p>
+<p>Depois de aplicar o filtro, o dataframe consultas (5.202 consultas, 872 pacientes) passou a conter apenas os pacientes que apresentaram IMC ≥ 30 em pelo menos uma consulta, resultando no novo dataframe obese. O dataframe obese mantém a mesma estrutura de variáveis (17 colunas), mas contém menos pacientes (695) e menos consultas (4.102), restrito àqueles que tiveram obesidade (IMC ≥ 30) em pelo menos uma avaliação. Esse subconjunto apresenta peso e IMC médios mais altos, idade média ligeiramente menor e preserva as distribuições de sexo, raça e período de acompanhamento do banco original.</p>
+<blockquote class="blockquote">
+<p>O que mudou em relação ao original:</p>
+</blockquote>
+<ul>
+<li>O número de <em>pacientes</em> reduziu de 872 para 695, com exclusão de 177 (20,3%) pacientes que nunca tiveram IMC ≥ 30.</li>
+<li>O número de <em>consultas</em> reduziu de 5.202 para 4.102, com exclusão de 1100 (21,2%) consultas de pacientes que nunca tiveram IMC ≥ 30.</li>
+<li>Distribuição <em>etária</em>: a média de idade diminuiu de ~47,3 anos para ~45,7 anos, indicando que a subamostra de obesos é um pouco mais jovem.</li>
+<li><em>Sexo</em>: mantém-se a predominância feminina [F: 2.627 (60.2%) vs.&nbsp;M: 1.475 (64%)], com leve aumento proporcional de mulheres.</li>
+<li><em>Raça</em>: permanece similar, mas com leve redução proporcional dos registros classificados como “VERIFICAR”.</li>
+<li><em>Peso</em> médio subiu de ~117 kg para ~130 kg.</li>
+<li><em>IMC</em> médio subiu de ~42,9 para ~47,5, com valores mínimos de 19,8 (pois algumas consultas de obesos podem ter IMC &lt; 30, mas o paciente já foi obeso em outra consulta).</li>
+<li><em>Altura</em> média manteve-se estável (1,64 m → 1,65 m).</li>
+<li><em>Perda percentual</em> de peso (percent_weight_loss): distribuição semelhante, mas agora restrita ao grupo com obesidade em algum momento.</li>
+<li>Datas: período de acompanhamento se mantém (2016–2023), apenas com redução no número de observações.</li>
+</ul>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 30%">
+<col style="width: 29%">
+<col style="width: 40%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Característica</th>
+<th>consultas (original)</th>
+<th>novo (IMC ≥ 30 em ≥1 consulta)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Nº de pacientes</td>
+<td>872</td>
+<td>695 (79.7%) / perda de 20.3%</td>
+</tr>
+<tr class="even">
+<td>Nº de consultas</td>
+<td>5.202</td>
+<td>4.102</td>
+</tr>
+<tr class="odd">
+<td>Idade média (anos)</td>
+<td>47,3</td>
+<td>45,7</td>
+</tr>
+<tr class="even">
+<td>Peso médio (kg)</td>
+<td>117</td>
+<td>130</td>
+</tr>
+<tr class="odd">
+<td>IMC médio (kg/m²)</td>
+<td>42,9</td>
+<td>47,5</td>
+</tr>
+<tr class="even">
+<td>Altura média (m)</td>
+<td>1,64</td>
+<td>1,65</td>
+</tr>
+<tr class="odd">
+<td>% de mulheres</td>
+<td>60,2% (3.133/5.202)</td>
+<td>64,0% (2.627/4.102)</td>
+</tr>
+<tr class="even">
+<td>Período das consultas</td>
+<td>2016–2023</td>
+<td>2016–2023</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="por-idade" class="level2">
+<h2 class="anchored" data-anchor-id="por-idade">Por idade</h2>
+<section id="interseção-evalfalse" class="level3">
+<h3 class="anchored" data-anchor-id="interseção-evalfalse">Interseção (eval=false)</h3>
+<p>Nesta primeira opção, os pacientes que foram atendidos enquanto ainda eram menores de idade (idade &lt; 18 anos) e que também tiveram consultas na vida adulta (idade ≥ 18 anos) são mantidos. O código a seguir filtra os pacientes obesos, mantendo apenas aqueles que tiveram pelo menos uma consulta na vida adulta, e exclui os que foram atendidos exclusivamente antes dos 18 anos.</p>
+<blockquote class="blockquote">
+<p>Primeira opção (obese_intersect): inclui todos os pacientes com pelo menos uma consulta ≥ 18 anos (mesmo que tenham histórico antes dos 18).</p>
+</blockquote>
+<div class="cell" data-layout-align="center" data-evaluate="false">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>consultas_underage <span class="ot">&lt;-</span> consultas_bmi <span class="sc">%&gt;%</span> </span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(age)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">%&gt;%</span> </span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(age <span class="sc">&lt;</span> <span class="dv">18</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">%&gt;%</span> </span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">distinct</span>(record_id, <span class="at">.keep_all =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="co">#   Ordena o dataframe obese por idade decrescente (arrange(desc(age))).</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Filtra apenas registros de pacientes com idade &lt; 18 anos.</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Usa distinct(record_id, .keep_all = TRUE) → mantém apenas uma linha por paciente.</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Como está ordenado em ordem decrescente de idade, fica registrada a maior idade do paciente enquanto menor de idade.</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Resultado: cada paciente aparece uma única vez, representando sua consulta mais velha antes dos 18 anos.</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>consultas_adults <span class="ot">&lt;-</span> consultas_bmi <span class="sc">%&gt;%</span> </span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">arrange</span>(<span class="fu">desc</span>(age)</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>            ) <span class="sc">%&gt;%</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(age <span class="sc">&gt;=</span> <span class="dv">18</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>           ) <span class="sc">%&gt;%</span> </span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">distinct</span>(record_id, <span class="at">.keep_all =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a><span class="co">#   Mesmo processo, mas agora para pacientes com idade ≥ 18 anos.</span></span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a><span class="co"># Resultado: cada paciente aparece uma vez, representando sua consulta mais velha em idade adulta.</span></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>consultas_adults_records <span class="ot">&lt;-</span> consultas_adults <span class="sc">%&gt;%</span> <span class="fu">pull</span>(record_id)</span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a><span class="co"># Cria um vetor (character) contendo os IDs (record_id) de todos os pacientes que têm pelo menos uma consulta na idade adulta.</span></span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>common_record_ids <span class="ot">&lt;-</span> <span class="fu">intersect</span>(consultas_underage<span class="sc">$</span>record_id, consultas_adults<span class="sc">$</span>record_id)</span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a><span class="co"># Identifica os pacientes que aparecem nos dois grupos (ou seja, têm registro tanto antes quanto depois dos 18 anos).</span></span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a><span class="co"># intersect() retorna o conjunto de record_id comum aos dois dataframes.</span></span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>obese_intersect <span class="ot">&lt;-</span> consultas_bmi <span class="sc">%&gt;%</span> </span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(</span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a>    record_id <span class="sc">%in%</span> consultas_adults_records</span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>O código divide os pacientes obesos em dois subconjuntos: aqueles que tiveram consultas ainda menores de 18 anos e aqueles que já tiveram consultas na vida adulta. Para cada paciente, mantém apenas uma linha representando a consulta de maior idade em cada fase. Além disso, identifica o subconjunto de pacientes que estavam presentes em ambas as fases de acompanhamento, ou seja, que iniciaram o seguimento quando menores de idade e continuaram após atingir a maioridade. Com base nisso, o passo final cria o dataframe <code>obese</code> que contém apenas pacientes com ao menos uma consulta na vida adulta (filtra-se <code>consultas_bmi</code> mantendo os registros cujo <code>record_id</code> aparece em <code>consultas_adults_records</code>). Assim, todos os indivíduos acompanhados exclusivamente antes dos 18 anos são excluídos do conjunto principal, enquanto os que atingiram a maioridade permanecem para as análises. O vetor <code>common_record_ids</code> continua disponível caso seja necessário isolar, em análises específicas, o subgrupo que <strong>transitou</strong> de menor para adulto (isto é, pacientes com histórico em ambas as fases).</p>
+<p>Um total de 11 pacientes foram atendidos na clínica enquanto ainda eram menores de idade, correspondendo a 140 consultas médicas. Destes, 4 continuaram o acompanhamento após atingirem a maioridade, restando apenas 7 pacientes que não completaram a maioridade durante o período de acompanhamento.</p>
+<p><code>obese_intersect</code> é o dataset de consultas contendo os registros dos pacientes maiores de idade que tiveram pelo menos um IMC &gt; 30 e acompanhados durante o período de interesse, com um total de 4062 consultas médicas.</p>
+</section>
+<section id="exclusão-de-pacientes-menores-de-idade" class="level3">
+<h3 class="anchored" data-anchor-id="exclusão-de-pacientes-menores-de-idade">Exclusão de pacientes menores de idade</h3>
+<blockquote class="blockquote">
+<p>Segunda opção (obese_adults_only): inclui apenas pacientes que entraram no acompanhamento já adultos, eliminando qualquer paciente que teve consulta como menor de idade.</p>
+</blockquote>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. Identifica todos os pacientes que tiveram consultas &lt; 18 anos</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>underage_records <span class="ot">&lt;-</span> consultas_bmi <span class="sc">%&gt;%</span> </span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(age <span class="sc">&lt;</span> <span class="dv">18</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pull</span>(record_id) <span class="sc">%&gt;%</span> </span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">unique</span>()</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. Cria o dataset 'obese' apenas com consultas de pacientes adultos</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="co">#    que nunca tiveram consulta como menores de idade</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>consultas_adults <span class="ot">&lt;-</span> consultas_bmi <span class="sc">%&gt;%</span> </span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>    age <span class="sc">&gt;=</span> <span class="dv">18</span>,                           <span class="co"># garante só idade adulta</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    <span class="sc">!</span>(record_id <span class="sc">%in%</span> underage_records))  <span class="co"># exclui quem já foi &lt;18</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>O código acima cria um novo dataframe chamado <code>consultas_adults</code>, que contém apenas os pacientes que foram atendidos exclusivamente na vida adulta (idade ≥ 18 anos). Pacientes que tiveram consultas enquanto menores de idade são completamente excluídos do conjunto.</p>
+<blockquote class="blockquote">
+<p>O que mudou em <code>consultas_adults</code> em relação a <code>consultas_bmi</code>:</p>
+</blockquote>
+<p>Comparativo objetivo do que mudou ao excluir qualquer paciente que já teve consulta &lt; 18 anos (passando de consultas_bmi → consultas_adults):</p>
+<ul>
+<li>Número de <code>consultas</code>: linhas caíram de 4.102 para 4.039 (n=63; redução de −1,5%).</li>
+<li><code>Pacientes</code> únicos: de 695 para 684 (n=11; redução de −1,6%).</li>
+<li><code>Idade</code>: mínimo subiu de 5,68 para 18,0 anos (como esperado); média levemente maior (45,7 → 46,2).</li>
+<li><code>Sexo</code>: % de mulheres praticamente estável (64,0% → 64,4%; 2.627/4.102 vs.&nbsp;2.600/4.039).</li>
+<li><code>Antropometria</code>: médias muito semelhantes (peso ~130 kg; IMC 47,5 → 47,6); leve redução no desvio-padrão do peso (38,3 → 37,9).</li>
+<li>Completude: pequenos ganhos — faltantes em weight_kg e bmi caem de 790 para 784; percent_weight_loss de 1.384 para 1.369.</li>
+<li>Período de consultas permanece 2016–2023.</li>
+</ul>
+<blockquote class="blockquote">
+<p>Pipe table:</p>
+</blockquote>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 34%">
+<col style="width: 30%">
+<col style="width: 34%">
+</colgroup>
+<thead>
+<tr class="header">
+<th><strong>Métrica</strong></th>
+<th><strong>Antes:</strong> consultas_bmi</th>
+<th><strong>Depois:</strong> consultas_adults</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Linhas (consultas)</td>
+<td>4.102</td>
+<td>4.039</td>
+</tr>
+<tr class="even">
+<td>Pacientes únicos (record_id)</td>
+<td>695</td>
+<td>684</td>
+</tr>
+<tr class="odd">
+<td>Idade média (anos)</td>
+<td>45,7</td>
+<td>46,2</td>
+</tr>
+<tr class="even">
+<td>Idade mínima (anos)</td>
+<td>5,68</td>
+<td>18,0</td>
+</tr>
+<tr class="odd">
+<td>Mulheres, n (%)</td>
+<td>2.627 (64,0%)</td>
+<td>2.600 (64,4%)</td>
+</tr>
+<tr class="even">
+<td>Peso médio (kg)</td>
+<td>130</td>
+<td>130</td>
+</tr>
+<tr class="odd">
+<td>IMC médio (kg/m²)</td>
+<td>47,5</td>
+<td>47,6</td>
+</tr>
+<tr class="even">
+<td>weight_kg faltante (n)</td>
+<td>790</td>
+<td>784</td>
+</tr>
+<tr class="odd">
+<td>bmi faltante (n)</td>
+<td>790</td>
+<td>784</td>
+</tr>
+<tr class="even">
+<td>percent_weight_loss faltante</td>
+<td>1.384</td>
+<td>1.369</td>
+</tr>
+</tbody>
+</table>
+<p>Interpretação: a exclusão dos pacientes com histórico de consultas na menoridade produz um conjunto estritamente adulto, com mudanças mínimas nas estatísticas descritivas e pequena redução do número de registros e pacientes. Isso sugere que a fração de indivíduos com histórico &lt;18 anos era relativamente pequena e não distorcia substancialmente as médias antropométricas do grupo.</p>
+</section>
+</section>
+<section id="consultas-1" class="level2">
+<h2 class="anchored" data-anchor-id="consultas-1">≥ 2 consultas</h2>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>consultas_2_visits <span class="ot">&lt;-</span> consultas_adults <span class="sc">%&gt;%</span> </span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(record_id) <span class="sc">%&gt;%</span> </span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">n</span>() <span class="sc">&gt;=</span> <span class="dv">2</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>()</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="co"># agrupando os dados por `record_id` (identificador único do paciente) e mantendo apenas aqueles grupos (pacientes) que possuem duas ou mais observações (consultas). O resultado é um conjunto de dados que exclui pacientes com apenas uma consulta.</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Esse código cria um novo dataframe chamado <code>consultas_2_visits</code>, que contém apenas os pacientes que tiveram pelo menos duas consultas médicas registradas.</p>
+<blockquote class="blockquote">
+<p>O que mudou em <code>consultas_2_visits</code> em relação a <code>consultas_adults</code>:</p>
+</blockquote>
+<p>Comparativo objetivo do que mudou ao exigir ≥2 consultas por paciente (passando de <code>consultas_adults</code> para <code>consultas_2_visits</code>):</p>
+<ul>
+<li><strong>Número de consultas</strong>: linhas caíram de 4.039 para 3.929 (n=110; redução de −2,7%).<br>
+</li>
+<li><strong>Pacientes únicos</strong>: de 684 para 574 (n=110; redução de −16,1%), correspondendo justamente aos que tinham apenas uma consulta.<br>
+</li>
+<li><strong>Idade</strong>: média praticamente inalterada (46,2 → 46,3 anos); mínima continua em 18 anos.<br>
+</li>
+<li><strong>Sexo</strong>: % de mulheres estável (64,4% → 64,3%; 2.600/4.039 vs.&nbsp;2.523/3.929).<br>
+</li>
+<li><strong>Antropometria</strong>: valores médios quase idênticos (peso ~130 kg; IMC 47,6 → 47,6).<br>
+</li>
+<li><strong>Completude</strong>: leve melhora na proporção de dados completos, já que pacientes de consulta única (com mais risco de faltar medidas) foram removidos — ex: <code>percent_weight_loss</code> faltante reduziu de 1.369 para 1.259 (N=110).</li>
+</ul>
+<section id="pipe-table" class="level3">
+<h3 class="anchored" data-anchor-id="pipe-table">Pipe table</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 31%">
+<col style="width: 34%">
+</colgroup>
+<thead>
+<tr class="header">
+<th><strong>Métrica</strong></th>
+<th><strong>Antes:</strong> consultas_adults</th>
+<th><strong>Depois:</strong> consultas_2_visits</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Linhas (consultas)</td>
+<td>4.039</td>
+<td>3.929</td>
+</tr>
+<tr class="even">
+<td>Pacientes únicos (record_id)</td>
+<td>684</td>
+<td>574</td>
+</tr>
+<tr class="odd">
+<td>Idade média (anos)</td>
+<td>46,2</td>
+<td>46,3</td>
+</tr>
+<tr class="even">
+<td>Idade mínima (anos)</td>
+<td>18,0</td>
+<td>18,0</td>
+</tr>
+<tr class="odd">
+<td>Mulheres, n (%)</td>
+<td>2.600 (64,4%)</td>
+<td>2.523 (64,3%)</td>
+</tr>
+<tr class="even">
+<td>Peso médio (kg)</td>
+<td>130</td>
+<td>130</td>
+</tr>
+<tr class="odd">
+<td>IMC médio (kg/m²)</td>
+<td>47,6</td>
+<td>47,6</td>
+</tr>
+<tr class="even">
+<td>weight_kg faltante (n)</td>
+<td>784</td>
+<td>784</td>
+</tr>
+<tr class="odd">
+<td>bmi faltante (n)</td>
+<td>784</td>
+<td>784</td>
+</tr>
+<tr class="even">
+<td>percent_weight_loss faltante</td>
+<td>1.369</td>
+<td>1.259</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Interpretação:</strong> ao excluir pacientes com apenas uma consulta, reduz-se de forma significativa o número de indivíduos (−16%), mas mantém-se praticamente inalterado o perfil clínico (idade, sexo, peso e IMC médios). O conjunto resultante é mais adequado para análises longitudinais de evolução, pois garante acompanhamento mínimo de duas consultas por paciente.</p>
+</section>
+</section>
+</section>
+<section id="objetivos" class="level1">
+<h1>Objetivos</h1>
+<section id="objetivo-geral" class="level2">
+<h2 class="anchored" data-anchor-id="objetivo-geral">Objetivo Geral</h2>
+<p>Analisar as medidas de frequência, tendência central e dispersão associadas ao tratamento da obesidade, visando identificar variáveis clínicas e epidemiológicas associadas a melhor resposta ao tratamento clínico da obesidade.</p>
+<ol type="1">
+<li><p>Componente descritivo<br>
+1.1. * Perfil epidemiológico na primeira consulta: idade, sexo, etnia, IMC, comorbidades.<br>
+1.2. Incidência de doenças cardiovasculares, osteometabólicas, anemias e deficiências vitamínicas.<br>
+1.3. * Indicadores de atendimento: número de consultas e tempo de seguimento.<br>
+1.4. Tipos de tratamentos prescritos para obesidade e dislipidemia e sua frequência.<br>
+1.5. Causa dos 95 óbitos.<br>
+1.6. * Proporção de indivíduos com peso final maior que o inicial.<br>
+1.7. * Proporção de consultas (a partir da segunda) com ganho ou perda de peso em relação à anterior.</p></li>
+<li><p>Análises pelo tempo de seguimento<br>
+2.1. * Comparar a porcentagem máxima de perda de peso entre seguimento ≤12 meses e &gt;12 meses, ajustando por sexo, etnia, idade, IMC inicial, comorbidades e uso de medicação.<br>
+2.2. * Avaliar associação da perda de peso máxima com variáveis demográficas, clínicas e de seguimento.<br>
+2.3. * Descrever o momento em que cada indivíduo atingiu ≥5% de perda em relação ao peso inicial.</p></li>
+<li><p>Subgrupos com perda ≥5%<br>
+3.1. * Identificar o tempo e a consulta da primeira observação de perda ≥5%.<br>
+3.2. * Medidas de frequência de reganho de peso após a perda ≥5%.<br>
+3.3. * Comparar a perda máxima entre subgrupos (≤6 meses, 6–12 meses, &gt;12 meses).</p></li>
+<li><p>Grupo sem perda ≥5%<br>
+4.1. * Identificar tempo de seguimento e consulta com maior perda observada.<br>
+4.2. * Descrever o ganho de peso após esse momento.</p></li>
+<li><p>Protocolos e padronização<br>
+5.1. Elaborar protocolo de atendimento com critérios de inclusão, rastreio, seguimento, tratamento e alta.<br>
+5.2. Desenvolver ficha médica padronizada para implementação do protocolo.</p></li>
+</ol>
+</section>
+<section id="escolha-do-dataset" class="level2">
+<h2 class="anchored" data-anchor-id="escolha-do-dataset">Escolha do dataset</h2>
+<p>Escolha o dataset desejado para as análises subsequentes</p>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>obese <span class="ot">&lt;-</span> consultas_2_visits</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">rm</span>(</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  consultas, </span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  consultas_bmi, </span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  obese_intersect,</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>  consultas_adults, </span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  consultas_2_visits, </span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  consultas_underage, </span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>  consultas_adults_records, </span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>  common_record_ids, </span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>  underage_records)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="componente-descritivo" class="level2">
+<h2 class="anchored" data-anchor-id="componente-descritivo">1. Componente descritivo</h2>
+<section id="perfil-epidemiológico-na-primeira-consulta-idade-sexo-etnia-imc-comorbidades." class="level3">
+<h3 class="anchored" data-anchor-id="perfil-epidemiológico-na-primeira-consulta-idade-sexo-etnia-imc-comorbidades.">1.1. Perfil epidemiológico na primeira consulta: idade, sexo, etnia, IMC, comorbidades.</h3>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 1) Primeira consulta por paciente</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>baseline <span class="ot">&lt;-</span> obese <span class="sc">%&gt;%</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(record_id) <span class="sc">%&gt;%</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(date_consultation, <span class="at">.by_group =</span> <span class="cn">TRUE</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">slice</span>(<span class="dv">1</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>()</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="co"># 2) Funções auxiliares ----------------------------------------------------</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="co"># 2.1) Estatísticas com IC95% (t de Student) + min/max, ignorando NAs</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>ic95_stats <span class="ot">&lt;-</span> <span class="cf">function</span>(x) {</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>  x <span class="ot">&lt;-</span> x[<span class="sc">!</span><span class="fu">is.na</span>(x)]</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>  n  <span class="ot">&lt;-</span> <span class="fu">length</span>(x)</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (n <span class="sc">==</span> <span class="dv">0</span>) {</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">return</span>(<span class="fu">c</span>(<span class="at">media =</span> <span class="cn">NA_real_</span>, <span class="at">li =</span> <span class="cn">NA_real_</span>, <span class="at">ls =</span> <span class="cn">NA_real_</span>, <span class="at">min =</span> <span class="cn">NA_real_</span>, <span class="at">max =</span> <span class="cn">NA_real_</span>))</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>  m  <span class="ot">&lt;-</span> <span class="fu">mean</span>(x)</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>  s  <span class="ot">&lt;-</span> <span class="fu">sd</span>(x)</span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>  se <span class="ot">&lt;-</span> s <span class="sc">/</span> <span class="fu">sqrt</span>(n)</span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>  tcrit <span class="ot">&lt;-</span> <span class="cf">if</span> (n <span class="sc">&gt;</span> <span class="dv">1</span>) <span class="fu">qt</span>(<span class="fl">0.975</span>, <span class="at">df =</span> n <span class="sc">-</span> <span class="dv">1</span>) <span class="cf">else</span> <span class="cn">NA_real_</span></span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>  li <span class="ot">&lt;-</span> <span class="cf">if</span> (<span class="sc">!</span><span class="fu">is.na</span>(tcrit)) m <span class="sc">-</span> tcrit <span class="sc">*</span> se <span class="cf">else</span> <span class="cn">NA_real_</span></span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>  ls <span class="ot">&lt;-</span> <span class="cf">if</span> (<span class="sc">!</span><span class="fu">is.na</span>(tcrit)) m <span class="sc">+</span> tcrit <span class="sc">*</span> se <span class="cf">else</span> <span class="cn">NA_real_</span></span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">c</span>(<span class="at">media =</span> m, <span class="at">li =</span> li, <span class="at">ls =</span> ls, <span class="at">min =</span> <span class="fu">min</span>(x), <span class="at">max =</span> <span class="fu">max</span>(x))</span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a><span class="co"># 2.2) Resumo de completude (N missings e %)</span></span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>na_profile <span class="ot">&lt;-</span> <span class="cf">function</span>(v) {</span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>  n_total   <span class="ot">&lt;-</span> <span class="fu">length</span>(v)</span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a>  n_na      <span class="ot">&lt;-</span> <span class="fu">sum</span>(<span class="fu">is.na</span>(v))</span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>  pct_na    <span class="ot">&lt;-</span> <span class="cf">if</span> (n_total <span class="sc">&gt;</span> <span class="dv">0</span>) <span class="dv">100</span> <span class="sc">*</span> n_na <span class="sc">/</span> n_total <span class="cf">else</span> <span class="cn">NA_real_</span></span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>  <span class="fu">c</span>(<span class="at">n_total =</span> n_total, <span class="at">n_na =</span> n_na, <span class="at">pct_na =</span> pct_na)</span>
+<span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a><span class="co"># 3) Resumos NUMÉRICOS -----------------------------------------------------</span></span>
+<span id="cb7-35"><a href="#cb7-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-36"><a href="#cb7-36" aria-hidden="true" tabindex="-1"></a><span class="co"># 3.1) Estatísticas com IC95% para variáveis contínuas</span></span>
+<span id="cb7-37"><a href="#cb7-37" aria-hidden="true" tabindex="-1"></a>idade_stats  <span class="ot">&lt;-</span> <span class="fu">ic95_stats</span>(baseline<span class="sc">$</span>age)</span>
+<span id="cb7-38"><a href="#cb7-38" aria-hidden="true" tabindex="-1"></a>peso_stats   <span class="ot">&lt;-</span> <span class="fu">ic95_stats</span>(baseline<span class="sc">$</span>weight_kg)</span>
+<span id="cb7-39"><a href="#cb7-39" aria-hidden="true" tabindex="-1"></a>altura_stats <span class="ot">&lt;-</span> <span class="fu">ic95_stats</span>(baseline<span class="sc">$</span>height_m)</span>
+<span id="cb7-40"><a href="#cb7-40" aria-hidden="true" tabindex="-1"></a>imc_stats    <span class="ot">&lt;-</span> <span class="fu">ic95_stats</span>(baseline<span class="sc">$</span>bmi)</span>
+<span id="cb7-41"><a href="#cb7-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-42"><a href="#cb7-42" aria-hidden="true" tabindex="-1"></a><span class="co"># 3.2) Completude para variáveis contínuas</span></span>
+<span id="cb7-43"><a href="#cb7-43" aria-hidden="true" tabindex="-1"></a>idade_na  <span class="ot">&lt;-</span> <span class="fu">na_profile</span>(baseline<span class="sc">$</span>age)</span>
+<span id="cb7-44"><a href="#cb7-44" aria-hidden="true" tabindex="-1"></a>peso_na   <span class="ot">&lt;-</span> <span class="fu">na_profile</span>(baseline<span class="sc">$</span>weight_kg)</span>
+<span id="cb7-45"><a href="#cb7-45" aria-hidden="true" tabindex="-1"></a>altura_na <span class="ot">&lt;-</span> <span class="fu">na_profile</span>(baseline<span class="sc">$</span>height_m)</span>
+<span id="cb7-46"><a href="#cb7-46" aria-hidden="true" tabindex="-1"></a>imc_na    <span class="ot">&lt;-</span> <span class="fu">na_profile</span>(baseline<span class="sc">$</span>bmi)</span>
+<span id="cb7-47"><a href="#cb7-47" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-48"><a href="#cb7-48" aria-hidden="true" tabindex="-1"></a><span class="co"># 4) Resumos CATEGÓRICOS ---------------------------------------------------</span></span>
+<span id="cb7-49"><a href="#cb7-49" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-50"><a href="#cb7-50" aria-hidden="true" tabindex="-1"></a><span class="co"># Para sex e race, proporções calculadas sobre N não-missing,</span></span>
+<span id="cb7-51"><a href="#cb7-51" aria-hidden="true" tabindex="-1"></a><span class="co"># mas também exibimos N e % de NAs</span></span>
+<span id="cb7-52"><a href="#cb7-52" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-53"><a href="#cb7-53" aria-hidden="true" tabindex="-1"></a><span class="co"># 4.1) Sexo</span></span>
+<span id="cb7-54"><a href="#cb7-54" aria-hidden="true" tabindex="-1"></a>sexo_baseline <span class="ot">&lt;-</span> baseline <span class="sc">%&gt;%</span></span>
+<span id="cb7-55"><a href="#cb7-55" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(sex, <span class="at">name =</span> <span class="st">"n"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb7-56"><a href="#cb7-56" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">prop =</span> <span class="dv">100</span> <span class="sc">*</span> n <span class="sc">/</span> <span class="fu">sum</span>(n, <span class="at">na.rm =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb7-57"><a href="#cb7-57" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-58"><a href="#cb7-58" aria-hidden="true" tabindex="-1"></a>sexo_na <span class="ot">&lt;-</span> <span class="fu">na_profile</span>(baseline<span class="sc">$</span>sex)</span>
+<span id="cb7-59"><a href="#cb7-59" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-60"><a href="#cb7-60" aria-hidden="true" tabindex="-1"></a><span class="co"># 4.2) Etnia</span></span>
+<span id="cb7-61"><a href="#cb7-61" aria-hidden="true" tabindex="-1"></a>etnia_baseline <span class="ot">&lt;-</span> baseline <span class="sc">%&gt;%</span></span>
+<span id="cb7-62"><a href="#cb7-62" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(race, <span class="at">name =</span> <span class="st">"n"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb7-63"><a href="#cb7-63" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">prop =</span> <span class="dv">100</span> <span class="sc">*</span> n <span class="sc">/</span> <span class="fu">sum</span>(n, <span class="at">na.rm =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb7-64"><a href="#cb7-64" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-65"><a href="#cb7-65" aria-hidden="true" tabindex="-1"></a>etnia_na <span class="ot">&lt;-</span> <span class="fu">na_profile</span>(baseline<span class="sc">$</span>race)</span>
+<span id="cb7-66"><a href="#cb7-66" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-67"><a href="#cb7-67" aria-hidden="true" tabindex="-1"></a><span class="co"># 5) Tibbles consolidados ---------------------------------------------------</span></span>
+<span id="cb7-68"><a href="#cb7-68" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-69"><a href="#cb7-69" aria-hidden="true" tabindex="-1"></a><span class="co"># 5.1) Perfil numérico (uma linha por variável, com média, IC95, min, max, NAs)</span></span>
+<span id="cb7-70"><a href="#cb7-70" aria-hidden="true" tabindex="-1"></a>perfil_numerico <span class="ot">&lt;-</span> tibble<span class="sc">::</span><span class="fu">tibble</span>(</span>
+<span id="cb7-71"><a href="#cb7-71" aria-hidden="true" tabindex="-1"></a>  <span class="at">Variavel   =</span> <span class="fu">c</span>(<span class="st">"Idade (anos)"</span>, <span class="st">"Peso (kg)"</span>, <span class="st">"Altura (m)"</span>, <span class="st">"IMC (kg/m²)"</span>),</span>
+<span id="cb7-72"><a href="#cb7-72" aria-hidden="true" tabindex="-1"></a>  <span class="at">Media      =</span> <span class="fu">c</span>(idade_stats[<span class="st">"media"</span>],  peso_stats[<span class="st">"media"</span>],  altura_stats[<span class="st">"media"</span>],  imc_stats[<span class="st">"media"</span>]),</span>
+<span id="cb7-73"><a href="#cb7-73" aria-hidden="true" tabindex="-1"></a>  <span class="at">IC95_inf   =</span> <span class="fu">c</span>(idade_stats[<span class="st">"li"</span>],     peso_stats[<span class="st">"li"</span>],     altura_stats[<span class="st">"li"</span>],     imc_stats[<span class="st">"li"</span>]),</span>
+<span id="cb7-74"><a href="#cb7-74" aria-hidden="true" tabindex="-1"></a>  <span class="at">IC95_sup   =</span> <span class="fu">c</span>(idade_stats[<span class="st">"ls"</span>],     peso_stats[<span class="st">"ls"</span>],     altura_stats[<span class="st">"ls"</span>],     imc_stats[<span class="st">"ls"</span>]),</span>
+<span id="cb7-75"><a href="#cb7-75" aria-hidden="true" tabindex="-1"></a>  <span class="at">Minimo     =</span> <span class="fu">c</span>(idade_stats[<span class="st">"min"</span>],    peso_stats[<span class="st">"min"</span>],    altura_stats[<span class="st">"min"</span>],    imc_stats[<span class="st">"min"</span>]),</span>
+<span id="cb7-76"><a href="#cb7-76" aria-hidden="true" tabindex="-1"></a>  <span class="at">Maximo     =</span> <span class="fu">c</span>(idade_stats[<span class="st">"max"</span>],    peso_stats[<span class="st">"max"</span>],    altura_stats[<span class="st">"max"</span>],    imc_stats[<span class="st">"max"</span>]),</span>
+<span id="cb7-77"><a href="#cb7-77" aria-hidden="true" tabindex="-1"></a>  <span class="at">N_total    =</span> <span class="fu">c</span>(idade_na[<span class="st">"n_total"</span>],   peso_na[<span class="st">"n_total"</span>],   altura_na[<span class="st">"n_total"</span>],   imc_na[<span class="st">"n_total"</span>]),</span>
+<span id="cb7-78"><a href="#cb7-78" aria-hidden="true" tabindex="-1"></a>  <span class="at">N_NA       =</span> <span class="fu">c</span>(idade_na[<span class="st">"n_na"</span>],      peso_na[<span class="st">"n_na"</span>],      altura_na[<span class="st">"n_na"</span>],      imc_na[<span class="st">"n_na"</span>]),</span>
+<span id="cb7-79"><a href="#cb7-79" aria-hidden="true" tabindex="-1"></a>  <span class="at">Perc_NA    =</span> <span class="fu">c</span>(idade_na[<span class="st">"pct_na"</span>],    peso_na[<span class="st">"pct_na"</span>],    altura_na[<span class="st">"pct_na"</span>],    imc_na[<span class="st">"pct_na"</span>])</span>
+<span id="cb7-80"><a href="#cb7-80" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb7-81"><a href="#cb7-81" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-82"><a href="#cb7-82" aria-hidden="true" tabindex="-1"></a><span class="co"># 5.2) Perfil categórico (uma linha por categoria + linha de NAs)</span></span>
+<span id="cb7-83"><a href="#cb7-83" aria-hidden="true" tabindex="-1"></a>sexo_tbl <span class="ot">&lt;-</span> sexo_baseline <span class="sc">%&gt;%</span></span>
+<span id="cb7-84"><a href="#cb7-84" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">Variavel =</span> <span class="st">"Sexo"</span>,</span>
+<span id="cb7-85"><a href="#cb7-85" aria-hidden="true" tabindex="-1"></a>         <span class="at">Categoria =</span> <span class="fu">as.character</span>(sex)) <span class="sc">%&gt;%</span></span>
+<span id="cb7-86"><a href="#cb7-86" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(Variavel, Categoria, n, prop)</span>
+<span id="cb7-87"><a href="#cb7-87" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-88"><a href="#cb7-88" aria-hidden="true" tabindex="-1"></a>sexo_tbl_na <span class="ot">&lt;-</span> tibble<span class="sc">::</span><span class="fu">tibble</span>(</span>
+<span id="cb7-89"><a href="#cb7-89" aria-hidden="true" tabindex="-1"></a>  <span class="at">Variavel =</span> <span class="st">"Sexo"</span>,</span>
+<span id="cb7-90"><a href="#cb7-90" aria-hidden="true" tabindex="-1"></a>  <span class="at">Categoria =</span> <span class="st">"NA"</span>,</span>
+<span id="cb7-91"><a href="#cb7-91" aria-hidden="true" tabindex="-1"></a>  <span class="at">n =</span> sexo_na[<span class="st">"n_na"</span>],</span>
+<span id="cb7-92"><a href="#cb7-92" aria-hidden="true" tabindex="-1"></a>  <span class="at">prop =</span> <span class="dv">100</span> <span class="sc">*</span> <span class="fu">as.numeric</span>(sexo_na[<span class="st">"n_na"</span>]) <span class="sc">/</span> <span class="fu">as.numeric</span>(sexo_na[<span class="st">"n_total"</span>])</span>
+<span id="cb7-93"><a href="#cb7-93" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb7-94"><a href="#cb7-94" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-95"><a href="#cb7-95" aria-hidden="true" tabindex="-1"></a>etnia_tbl <span class="ot">&lt;-</span> etnia_baseline <span class="sc">%&gt;%</span></span>
+<span id="cb7-96"><a href="#cb7-96" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">Variavel =</span> <span class="st">"Etnia"</span>,</span>
+<span id="cb7-97"><a href="#cb7-97" aria-hidden="true" tabindex="-1"></a>         <span class="at">Categoria =</span> <span class="fu">as.character</span>(race)) <span class="sc">%&gt;%</span></span>
+<span id="cb7-98"><a href="#cb7-98" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(Variavel, Categoria, n, prop)</span>
+<span id="cb7-99"><a href="#cb7-99" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-100"><a href="#cb7-100" aria-hidden="true" tabindex="-1"></a>etnia_tbl_na <span class="ot">&lt;-</span> tibble<span class="sc">::</span><span class="fu">tibble</span>(</span>
+<span id="cb7-101"><a href="#cb7-101" aria-hidden="true" tabindex="-1"></a>  <span class="at">Variavel =</span> <span class="st">"Etnia"</span>,</span>
+<span id="cb7-102"><a href="#cb7-102" aria-hidden="true" tabindex="-1"></a>  <span class="at">Categoria =</span> <span class="st">"NA"</span>,</span>
+<span id="cb7-103"><a href="#cb7-103" aria-hidden="true" tabindex="-1"></a>  <span class="at">n =</span> etnia_na[<span class="st">"n_na"</span>],</span>
+<span id="cb7-104"><a href="#cb7-104" aria-hidden="true" tabindex="-1"></a>  <span class="at">prop =</span> <span class="dv">100</span> <span class="sc">*</span> <span class="fu">as.numeric</span>(etnia_na[<span class="st">"n_na"</span>]) <span class="sc">/</span> <span class="fu">as.numeric</span>(etnia_na[<span class="st">"n_total"</span>])</span>
+<span id="cb7-105"><a href="#cb7-105" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb7-106"><a href="#cb7-106" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-107"><a href="#cb7-107" aria-hidden="true" tabindex="-1"></a>perfil_categorico <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(</span>
+<span id="cb7-108"><a href="#cb7-108" aria-hidden="true" tabindex="-1"></a>  sexo_tbl, sexo_tbl_na,</span>
+<span id="cb7-109"><a href="#cb7-109" aria-hidden="true" tabindex="-1"></a>  etnia_tbl, etnia_tbl_na</span>
+<span id="cb7-110"><a href="#cb7-110" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb7-111"><a href="#cb7-111" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-112"><a href="#cb7-112" aria-hidden="true" tabindex="-1"></a><span class="co"># 6) N total de pacientes</span></span>
+<span id="cb7-113"><a href="#cb7-113" aria-hidden="true" tabindex="-1"></a>n_total_pacientes <span class="ot">&lt;-</span> dplyr<span class="sc">::</span><span class="fu">n_distinct</span>(baseline<span class="sc">$</span>record_id)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Função para formatar com decimais definidos</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>fmt <span class="ot">&lt;-</span> <span class="cf">function</span>(x, dec) {</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ifelse</span>(<span class="fu">is.na</span>(x), <span class="st">""</span>,</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>         <span class="fu">format</span>(<span class="fu">round</span>(<span class="fu">as.numeric</span>(x), dec),</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>                <span class="at">big.mark =</span> <span class="st">"."</span>, <span class="at">decimal.mark =</span> <span class="st">","</span>, <span class="at">trim =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Definir número de casas decimais por variável</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>dec_map <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Idade (anos)"</span> <span class="ot">=</span> <span class="dv">0</span>,</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>             <span class="st">"Peso (kg)"</span>    <span class="ot">=</span> <span class="dv">1</span>,</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>             <span class="st">"Altura (m)"</span>   <span class="ot">=</span> <span class="dv">1</span>,</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>             <span class="st">"IMC (kg/m²)"</span>  <span class="ot">=</span> <span class="dv">1</span>)</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Aplicar formatação na tabela numérica</span></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>perfil_numerico_fmt <span class="ot">&lt;-</span> perfil_numerico <span class="sc">%&gt;%</span></span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rowwise</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">d =</span> dec_map[Variavel],</span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">Media    =</span> <span class="fu">fmt</span>(Media, d),</span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">IC95_inf =</span> <span class="fu">fmt</span>(IC95_inf, d),</span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">IC95_sup =</span> <span class="fu">fmt</span>(IC95_sup, d),</span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">Minimo   =</span> <span class="fu">fmt</span>(Minimo, d),</span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">Maximo   =</span> <span class="fu">fmt</span>(Maximo, d),</span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a>    <span class="at">Perc_NA  =</span> <span class="fu">paste0</span>(<span class="fu">fmt</span>(Perc_NA, <span class="dv">1</span>), <span class="st">"%"</span>)</span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>d)</span>
+<span id="cb8-28"><a href="#cb8-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-29"><a href="#cb8-29" aria-hidden="true" tabindex="-1"></a><span class="co"># Renderizar tabela final</span></span>
+<span id="cb8-30"><a href="#cb8-30" aria-hidden="true" tabindex="-1"></a>knitr<span class="sc">::</span><span class="fu">kable</span>(</span>
+<span id="cb8-31"><a href="#cb8-31" aria-hidden="true" tabindex="-1"></a>  perfil_numerico_fmt,</span>
+<span id="cb8-32"><a href="#cb8-32" aria-hidden="true" tabindex="-1"></a>  <span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">"Variável"</span>,<span class="st">"Média"</span>,<span class="st">"IC95% Inferior"</span>,<span class="st">"IC95% Superior"</span>,<span class="st">"Mínimo"</span>,<span class="st">"Máximo"</span>,<span class="st">"N total"</span>,<span class="st">"N (NA)"</span>,<span class="st">"% (NA)"</span>),</span>
+<span id="cb8-33"><a href="#cb8-33" aria-hidden="true" tabindex="-1"></a>  <span class="at">align =</span> <span class="fu">c</span>(<span class="st">"l"</span>,<span class="st">"c"</span>,<span class="st">"c"</span>,<span class="st">"c"</span>,<span class="st">"c"</span>,<span class="st">"c"</span>,<span class="st">"c"</span>,<span class="st">"c"</span>,<span class="st">"c"</span>)</span>
+<span id="cb8-34"><a href="#cb8-34" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 13%">
+<col style="width: 7%">
+<col style="width: 17%">
+<col style="width: 17%">
+<col style="width: 8%">
+<col style="width: 8%">
+<col style="width: 9%">
+<col style="width: 8%">
+<col style="width: 8%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Variável</th>
+<th style="text-align: center;">Média</th>
+<th style="text-align: center;">IC95% Inferior</th>
+<th style="text-align: center;">IC95% Superior</th>
+<th style="text-align: center;">Mínimo</th>
+<th style="text-align: center;">Máximo</th>
+<th style="text-align: center;">N total</th>
+<th style="text-align: center;">N (NA)</th>
+<th style="text-align: center;">% (NA)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Idade (anos)</td>
+<td style="text-align: center;">44</td>
+<td style="text-align: center;">43</td>
+<td style="text-align: center;">45</td>
+<td style="text-align: center;">18</td>
+<td style="text-align: center;">84</td>
+<td style="text-align: center;">574</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Peso (kg)</td>
+<td style="text-align: center;">133,8</td>
+<td style="text-align: center;">130,4</td>
+<td style="text-align: center;">137,2</td>
+<td style="text-align: center;">59,7</td>
+<td style="text-align: center;">268,7</td>
+<td style="text-align: center;">574</td>
+<td style="text-align: center;">99</td>
+<td style="text-align: center;">17,2%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Altura (m)</td>
+<td style="text-align: center;">1,6</td>
+<td style="text-align: center;">1,6</td>
+<td style="text-align: center;">1,7</td>
+<td style="text-align: center;">1,1</td>
+<td style="text-align: center;">1,9</td>
+<td style="text-align: center;">574</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">IMC (kg/m²)</td>
+<td style="text-align: center;">48,9</td>
+<td style="text-align: center;">47,8</td>
+<td style="text-align: center;">50</td>
+<td style="text-align: center;">26,9</td>
+<td style="text-align: center;">91,5</td>
+<td style="text-align: center;">574</td>
+<td style="text-align: center;">99</td>
+<td style="text-align: center;">17,2%</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Função de formatação</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>fmt_num <span class="ot">&lt;-</span> <span class="cf">function</span>(x, dec) <span class="fu">format</span>(<span class="fu">round</span>(x, dec), <span class="at">big.mark =</span> <span class="st">"."</span>, <span class="at">decimal.mark =</span> <span class="st">","</span>, <span class="at">trim =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Aplicar formatação</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>perfil_categorico_fmt <span class="ot">&lt;-</span> perfil_categorico <span class="sc">%&gt;%</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">n    =</span> <span class="fu">fmt_num</span>(n, <span class="dv">0</span>),   <span class="co"># N total sem casas decimais</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">prop =</span> <span class="fu">fmt_num</span>(prop, <span class="dv">1</span>) <span class="co"># Proporção (%) com 1 casa decimal</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Renderizar tabela</span></span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>knitr<span class="sc">::</span><span class="fu">kable</span>(</span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>  perfil_categorico_fmt,</span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>  <span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">"Variável"</span>, <span class="st">"Categoria"</span>, <span class="st">"N total"</span>, <span class="st">"Proporção (%)"</span>),</span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a>  <span class="at">align =</span> <span class="fu">c</span>(<span class="st">"l"</span>, <span class="st">"l"</span>, <span class="st">"c"</span>, <span class="st">"c"</span>),</span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a>  <span class="at">caption =</span> <span class="st">"Perfil categórico: sexo e etnia na primeira consulta"</span></span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Perfil categórico: sexo e etnia na primeira consulta</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Variável</th>
+<th style="text-align: left;">Categoria</th>
+<th style="text-align: center;">N total</th>
+<th style="text-align: center;">Proporção (%)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Sexo</td>
+<td style="text-align: left;">F</td>
+<td style="text-align: center;">375</td>
+<td style="text-align: center;">65,3</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Sexo</td>
+<td style="text-align: left;">M</td>
+<td style="text-align: center;">199</td>
+<td style="text-align: center;">34,7</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Sexo</td>
+<td style="text-align: left;">NA</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0,0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Etnia</td>
+<td style="text-align: left;">Branco</td>
+<td style="text-align: center;">428</td>
+<td style="text-align: center;">74,6</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Etnia</td>
+<td style="text-align: left;">Mulato (Pardo)</td>
+<td style="text-align: center;">95</td>
+<td style="text-align: center;">16,6</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Etnia</td>
+<td style="text-align: left;">Preto</td>
+<td style="text-align: center;">48</td>
+<td style="text-align: center;">8,4</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Etnia</td>
+<td style="text-align: left;">VERIFICAR</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0,5</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Etnia</td>
+<td style="text-align: left;">NA</td>
+<td style="text-align: center;">0</td>
+<td style="text-align: center;">0,0</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Foram incluídos <strong>574 pacientes</strong> na linha de base.</p>
+<p>A idade média foi de <strong>44 anos (IC95%: 43–45)</strong>, variando entre 18 e 84 anos.<br>
+O peso médio foi de <strong>133,8 kg (IC95%: 130,4–137,2)</strong>, com mínimo de 59,7 kg e máximo de 268,7 kg.<br>
+A altura média foi de <strong>1,65 m (IC95%: 1,64–1,66)</strong>, variando de 1,15 m a 1,91 m.<br>
+O IMC médio foi de <strong>48,9 kg/m² (IC95%: 47,8–50,0)</strong>, com valores mínimos e máximos de 26,9 kg/m² e 91,5 kg/m², respectivamente.</p>
+<p>Quanto à completude dos dados, não houve valores ausentes para idade e altura. Já para peso e IMC observaram-se <strong>99 casos faltantes (17,2%)</strong>.</p>
+<p>Na distribuição por sexo, <strong>375 pacientes (65,3%) eram mulheres</strong> e <strong>199 (34,7%) homens</strong>, sem dados ausentes.<br>
+Em relação à etnia, predominou a categoria <strong>Branco (n=428; 74,6%)</strong>, seguida de <strong>Mulato/Pardo (n=95; 16,6%)</strong>, <strong>Preto (n=48; 8,4%)</strong> e casos classificados como <strong>“VERIFICAR” (n=3; 0,5%)</strong>. Não houve valores ausentes registrados.</p>
+<p><strong>Resumo interpretativo:</strong> A população atendida na primeira consulta caracteriza-se por indivíduos de meia-idade, com predomínio do sexo feminino, obesidade grave (IMC médio ≈49 kg/m²) e predominância de pacientes brancos. A completude foi satisfatória, com ausência de dados apenas para peso e IMC em cerca de 17% dos casos.</p>
+<blockquote class="blockquote">
+<p>Resultados: Na primeira consulta foram avaliados <strong>574 pacientes</strong>, com idade média de <strong>44 anos (IC95%: 43–45)</strong>, variando entre 18 e 84 anos. O peso médio foi de <strong>133,8 kg (IC95%: 130,4–137,2)</strong> e a altura média de <strong>1,65 m (IC95%: 1,64–1,66)</strong>, resultando em um <strong>IMC médio de 48,9 kg/m² (IC95%: 47,8–50,0)</strong>. Os valores mínimos e máximos observados foram, respectivamente, 59,7 e 268,7 kg para peso; 1,15 e 1,91 m para altura; e 26,9 e 91,5 kg/m² para IMC. Houve ausência de dados em <strong>17,2%</strong> das observações de peso e IMC. A maioria dos pacientes era do <strong>sexo feminino (65,3%)</strong>, enquanto 34,7% eram do sexo masculino. Quanto à etnia, predominou a categoria <strong>branca (74,6%)</strong>, seguida de <strong>parda (16,6%)</strong>, <strong>preta (8,4%)</strong> e casos classificados como “<strong>verificar</strong>” (0,5%).</p>
+</blockquote>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Remover apenas objetos intermediários criados durante a análise do item 1.1</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Mantendo as funções auxiliares (ic95_stats, na_profile, fmt, fmt_num)</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="fu">rm</span>(</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>  baseline,</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>  idade_stats, peso_stats, altura_stats, imc_stats,</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>  idade_na, peso_na, altura_na, imc_na,</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>  sexo_baseline, sexo_na,</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>  etnia_baseline, etnia_na,</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>  sexo_tbl, sexo_tbl_na,</span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>  etnia_tbl, etnia_tbl_na,</span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>  perfil_numerico, </span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>  <span class="co">#perfil_numerico_fmt,</span></span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>  perfil_categorico, </span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>  <span class="co">#perfil_categorico_fmt,</span></span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>  n_total_pacientes,</span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a>  dec_map</span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="indicadores-de-atendimento-número-de-consultas-e-tempo-de-seguimento." class="level3">
+<h3 class="anchored" data-anchor-id="indicadores-de-atendimento-número-de-consultas-e-tempo-de-seguimento.">1.3. Indicadores de atendimento: número de consultas e tempo de seguimento.</h3>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># calcular número de consultas, tempo de seguimento e tempo médio entre consultas</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>indicadores_atendimento <span class="ot">&lt;-</span> obese <span class="sc">%&gt;%</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(record_id) <span class="sc">%&gt;%</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">n_consultas =</span> <span class="fu">n</span>(), <span class="co"># número de consultas por paciente</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>    <span class="co"># tempo total de seguimento entre a 1ª e a última consulta</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">tempo_seguimento_dias =</span> <span class="fu">as.numeric</span>(<span class="fu">max</span>(date_consultation, <span class="at">na.rm =</span> <span class="cn">TRUE</span>) <span class="sc">-</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>                                       <span class="fu">min</span>(date_consultation, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)),</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">tempo_seguimento_semanas =</span> tempo_seguimento_dias <span class="sc">/</span> <span class="dv">7</span>,</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">tempo_seguimento_meses  =</span> tempo_seguimento_dias <span class="sc">/</span> <span class="fl">30.44</span>,</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">tempo_seguimento_anos   =</span> tempo_seguimento_dias <span class="sc">/</span> <span class="fl">365.25</span>,</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>    <span class="co"># tempo médio entre consultas (média dos intervalos entre visitas consecutivas)</span></span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">tempo_medio_entre_consultas_dias =</span> dplyr<span class="sc">::</span><span class="fu">if_else</span>(</span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>      n_consultas <span class="sc">&gt;</span> <span class="dv">1</span>,</span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>      tempo_seguimento_dias <span class="sc">/</span> (n_consultas <span class="sc">-</span> <span class="dv">1</span>),</span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>      <span class="fu">as.numeric</span>(<span class="cn">NA</span>)</span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a>    <span class="co"># conversões auxiliares</span></span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">tempo_medio_entre_consultas_semanas =</span> tempo_medio_entre_consultas_dias <span class="sc">/</span> <span class="dv">7</span>,</span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">tempo_medio_entre_consultas_meses   =</span> tempo_medio_entre_consultas_dias <span class="sc">/</span> <span class="fl">30.44</span>,</span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true" tabindex="-1"></a>    <span class="at">tempo_medio_entre_consultas_anos    =</span> tempo_medio_entre_consultas_dias <span class="sc">/</span> <span class="fl">365.25</span>,</span>
+<span id="cb11-25"><a href="#cb11-25" aria-hidden="true" tabindex="-1"></a>    <span class="at">.groups =</span> <span class="st">"drop"</span></span>
+<span id="cb11-26"><a href="#cb11-26" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Esse código cria o dataframe <code>indicadores_atendimento</code>, que contém para cada paciente o número de consultas e o tempo de seguimento em dias, semanas, meses e anos (diferença entre a primeira e a última consulta). Contém ainda o tempo médio entre consultas (tempo_medio_entre_consultas_*), calculado como o tempo total entre a primeira e a última consulta dividido pelo número de intervalos (n_consultas - 1). Para pacientes com apenas uma consulta, o valor é NA.</p>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Medidas solicitadas: mediana, p5, p25, p75, p95, máximo</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>sumario_n_consultas <span class="ot">&lt;-</span> indicadores_atendimento <span class="sc">%&gt;%</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">p5      =</span> <span class="fu">quantile</span>(n_consultas, <span class="at">probs =</span> <span class="fl">0.05</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>, <span class="at">type =</span> <span class="dv">7</span>),</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">p25     =</span> <span class="fu">quantile</span>(n_consultas, <span class="at">probs =</span> <span class="fl">0.25</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>, <span class="at">type =</span> <span class="dv">7</span>),</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">mediana =</span> <span class="fu">quantile</span>(n_consultas, <span class="at">probs =</span> <span class="fl">0.50</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>, <span class="at">type =</span> <span class="dv">7</span>),</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">p75     =</span> <span class="fu">quantile</span>(n_consultas, <span class="at">probs =</span> <span class="fl">0.75</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>, <span class="at">type =</span> <span class="dv">7</span>),</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">p95     =</span> <span class="fu">quantile</span>(n_consultas, <span class="at">probs =</span> <span class="fl">0.95</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>, <span class="at">type =</span> <span class="dv">7</span>),</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">max     =</span> <span class="fu">max</span>(n_consultas, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="fu">everything</span>(), <span class="at">names_to =</span> <span class="st">"medida"</span>, <span class="at">values_to =</span> <span class="st">"valor"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">valor_fmt =</span> <span class="fu">fmt</span>(valor, <span class="at">dec =</span> <span class="dv">0</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(medida, <span class="at">valor =</span> valor_fmt)</span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a><span class="fu">kable</span>(sumario_n_consultas,</span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>      <span class="at">caption =</span> <span class="st">"Número de consultas por paciente — mediana, percentis (5, 25, 75, 95) e máximo"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Número de consultas por paciente — mediana, percentis (5, 25, 75, 95) e máximo</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">medida</th>
+<th style="text-align: left;">valor</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">p5</td>
+<td style="text-align: left;">2</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">p25</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">mediana</td>
+<td style="text-align: left;">5</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">p75</td>
+<td style="text-align: left;">9</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">p95</td>
+<td style="text-align: left;">17</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">max</td>
+<td style="text-align: left;">26</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Distribuição de frequências (absoluta e relativa)</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>tabela_frequencias <span class="ot">&lt;-</span> indicadores_atendimento <span class="sc">%&gt;%</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(n_consultas, <span class="at">name =</span> <span class="st">"freq"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">pct =</span> <span class="dv">100</span> <span class="sc">*</span> freq <span class="sc">/</span> <span class="fu">sum</span>(freq),</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">freq_fmt =</span> <span class="fu">fmt</span>(freq, <span class="at">dec =</span> <span class="dv">0</span>),</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">pct_fmt  =</span> <span class="fu">paste0</span>(<span class="fu">fmt</span>(pct, <span class="at">dec =</span> <span class="dv">2</span>), <span class="st">"%"</span>)</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="st">`</span><span class="at">n_consultas</span><span class="st">`</span> <span class="ot">=</span> n_consultas,</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>         <span class="st">`</span><span class="at">frequência</span><span class="st">`</span> <span class="ot">=</span> freq_fmt,</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>         <span class="st">`</span><span class="at">%</span><span class="st">`</span> <span class="ot">=</span> pct_fmt)</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a><span class="fu">kable</span>(tabela_frequencias,</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>      <span class="at">caption =</span> <span class="st">"Distribuição do número de consultas por paciente (frequência e porcentagem)"</span>,</span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>      <span class="at">align =</span> <span class="fu">c</span>(<span class="st">"c"</span>, <span class="st">"c"</span>, <span class="st">"c"</span>)</span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>      )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Distribuição do número de consultas por paciente (frequência e porcentagem)</caption>
+<thead>
+<tr class="header">
+<th style="text-align: center;">n_consultas</th>
+<th style="text-align: center;">frequência</th>
+<th style="text-align: center;">%</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">91</td>
+<td style="text-align: center;">15,85%</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">83</td>
+<td style="text-align: center;">14,46%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">74</td>
+<td style="text-align: center;">12,89%</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">52</td>
+<td style="text-align: center;">9,06%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">6</td>
+<td style="text-align: center;">37</td>
+<td style="text-align: center;">6,45%</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">7</td>
+<td style="text-align: center;">45</td>
+<td style="text-align: center;">7,84%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">8</td>
+<td style="text-align: center;">35</td>
+<td style="text-align: center;">6,10%</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">9</td>
+<td style="text-align: center;">24</td>
+<td style="text-align: center;">4,18%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">10</td>
+<td style="text-align: center;">28</td>
+<td style="text-align: center;">4,88%</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">11</td>
+<td style="text-align: center;">19</td>
+<td style="text-align: center;">3,31%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">12</td>
+<td style="text-align: center;">8</td>
+<td style="text-align: center;">1,39%</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">13</td>
+<td style="text-align: center;">15</td>
+<td style="text-align: center;">2,61%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">14</td>
+<td style="text-align: center;">14</td>
+<td style="text-align: center;">2,44%</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">15</td>
+<td style="text-align: center;">6</td>
+<td style="text-align: center;">1,05%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">16</td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0,87%</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">17</td>
+<td style="text-align: center;">9</td>
+<td style="text-align: center;">1,57%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">18</td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0,87%</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">19</td>
+<td style="text-align: center;">5</td>
+<td style="text-align: center;">0,87%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">20</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0,35%</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">21</td>
+<td style="text-align: center;">4</td>
+<td style="text-align: center;">0,70%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">22</td>
+<td style="text-align: center;">6</td>
+<td style="text-align: center;">1,05%</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">23</td>
+<td style="text-align: center;">3</td>
+<td style="text-align: center;">0,52%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: center;">24</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0,35%</td>
+</tr>
+<tr class="even">
+<td style="text-align: center;">26</td>
+<td style="text-align: center;">2</td>
+<td style="text-align: center;">0,35%</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<blockquote class="blockquote">
+<p>Resultado: O número de consultas por paciente apresentou ampla variação, oscilando entre 2 e 26 atendimentos durante o período de seguimento. A distribuição mostrou-se assimétrica à direita, com maior concentração nas faixas iniciais: 25% dos pacientes realizaram até 3 consultas, enquanto a mediana foi de 5 consultas e 75% tiveram até 9 consultas. Apenas 5% ultrapassaram 17 atendimentos, caracterizando um grupo minoritário submetido a acompanhamento mais frequente. A tabela de frequências indica que a distribuição é assimétrica à direita: a maioria concentrou-se entre 2 e 9 consultas (cerca de 75% do total), enquanto poucos pacientes atingiram números elevados de atendimentos (acima de 20 consultas, menos de 3%). O gráfico de distribuição acumulada (ECDF) ilustra de forma clara essa tendência, evidenciando que metade dos pacientes foi acompanhada com até cinco consultas e que a curva se estabiliza progressivamente a partir de 10 atendimentos, indicando que casos de seguimento prolongado foram menos comuns.</p>
+</blockquote>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(indicadores_atendimento, <span class="fu">aes</span>(<span class="at">x =</span> n_consultas)) <span class="sc">+</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">stat_ecdf</span>(<span class="at">geom =</span> <span class="st">"step"</span>) <span class="sc">+</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_x_continuous</span>(</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>        <span class="at">breaks =</span> <span class="fu">seq</span>(<span class="dv">0</span>, <span class="fu">max</span>(indicadores_atendimento<span class="sc">$</span>n_consultas), <span class="at">by =</span> <span class="dv">1</span>) <span class="co"># ticks a cada 1</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">scale_y_continuous</span>(</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>        <span class="at">breaks =</span> <span class="fu">seq</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="at">by =</span> <span class="fl">0.1</span>), <span class="co"># ticks a cada 10%</span></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>        <span class="at">labels =</span> scales<span class="sc">::</span><span class="fu">percent_format</span>(<span class="at">accuracy =</span> <span class="dv">1</span>)</span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">+</span></span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">labs</span>(<span class="at">x =</span> <span class="st">"Número de consultas por paciente"</span>, <span class="at">y =</span> <span class="st">"Acumulado (%)"</span>) <span class="sc">+</span></span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">12</span>) <span class="sc">+</span></span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(</span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">panel.grid.major.y =</span> <span class="fu">element_line</span>(<span class="at">color =</span> <span class="st">"grey80"</span>, <span class="at">linewidth =</span> <span class="fl">0.3</span>), <span class="co"># linhas horizontais principais</span></span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a>    <span class="at">panel.grid.minor.y =</span> <span class="fu">element_line</span>(<span class="at">color =</span> <span class="st">"grey90"</span>, <span class="at">linewidth =</span> <span class="fl">0.1</span>), <span class="co"># linhas horizontais menores</span></span>
+<span id="cb14-15"><a href="#cb14-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">panel.grid.major.x =</span> <span class="fu">element_line</span>(<span class="at">color =</span> <span class="st">"grey90"</span>, <span class="at">linewidth =</span> <span class="fl">0.3</span>)  <span class="co"># linhas verticais discretas</span></span>
+<span id="cb14-16"><a href="#cb14-16" aria-hidden="true" tabindex="-1"></a>  )</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="outputs/figs/n-consultas-ecdf-1.png" class="img-fluid figure-img"></p>
+<figcaption>Função de distribuição acumulada (ECDF) do número de consultas</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<blockquote class="blockquote">
+<p>Legenda O gráfico ECDF mostra no eixo X o número de consultas por paciente e no eixo Y a proporção acumulada de pacientes que atingiram até aquele valor. Observa-se que cerca de <strong>30% dos pacientes tiveram até 3 consultas</strong>, aproximadamente <strong>50% até 5 consultas (mediana)</strong>, e <strong>75% até 9 consultas (percentil 75)</strong>. A curva se aproxima de 100% em torno de 26 consultas, que é o valor máximo observado. Esse tipo de gráfico facilita a visualização dos <strong>percentis</strong>: basta projetar horizontalmente a linha desejada (25%, 50%, 75%, etc.) até interceptar a curva e ler no eixo X o valor correspondente de consultas.</p>
+</blockquote>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(knitr)</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>resumo_tempo_seguimento <span class="ot">&lt;-</span> indicadores_atendimento <span class="sc">%&gt;%</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">dias_mediana    =</span> <span class="fu">median</span>(tempo_seguimento_dias, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">dias_IQR        =</span> <span class="fu">IQR</span>(tempo_seguimento_dias, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">dias_max        =</span> <span class="fu">max</span>(tempo_seguimento_dias, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">semanas_mediana =</span> <span class="fu">median</span>(tempo_seguimento_semanas, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">semanas_IQR     =</span> <span class="fu">IQR</span>(tempo_seguimento_semanas, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">semanas_max     =</span> <span class="fu">max</span>(tempo_seguimento_semanas, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a>    <span class="at">meses_mediana   =</span> <span class="fu">median</span>(tempo_seguimento_meses, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">meses_IQR       =</span> <span class="fu">IQR</span>(tempo_seguimento_meses, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">meses_max       =</span> <span class="fu">max</span>(tempo_seguimento_meses, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">anos_mediana    =</span> <span class="fu">median</span>(tempo_seguimento_anos, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">anos_IQR        =</span> <span class="fu">IQR</span>(tempo_seguimento_anos, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">anos_max        =</span> <span class="fu">max</span>(tempo_seguimento_anos, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb15-21"><a href="#cb15-21" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb15-22"><a href="#cb15-22" aria-hidden="true" tabindex="-1"></a>  tidyr<span class="sc">::</span><span class="fu">pivot_longer</span>(</span>
+<span id="cb15-23"><a href="#cb15-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">cols =</span> <span class="fu">everything</span>(),</span>
+<span id="cb15-24"><a href="#cb15-24" aria-hidden="true" tabindex="-1"></a>    <span class="at">names_to =</span> <span class="fu">c</span>(<span class="st">"tempo"</span>, <span class="st">"estatistica"</span>),</span>
+<span id="cb15-25"><a href="#cb15-25" aria-hidden="true" tabindex="-1"></a>    <span class="at">names_sep =</span> <span class="st">"_"</span>,</span>
+<span id="cb15-26"><a href="#cb15-26" aria-hidden="true" tabindex="-1"></a>    <span class="at">values_to =</span> <span class="st">"valor"</span></span>
+<span id="cb15-27"><a href="#cb15-27" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb15-28"><a href="#cb15-28" aria-hidden="true" tabindex="-1"></a>  tidyr<span class="sc">::</span><span class="fu">pivot_wider</span>(</span>
+<span id="cb15-29"><a href="#cb15-29" aria-hidden="true" tabindex="-1"></a>    <span class="at">names_from =</span> estatistica,</span>
+<span id="cb15-30"><a href="#cb15-30" aria-hidden="true" tabindex="-1"></a>    <span class="at">values_from =</span> valor</span>
+<span id="cb15-31"><a href="#cb15-31" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb15-32"><a href="#cb15-32" aria-hidden="true" tabindex="-1"></a>  <span class="co"># aplicar a função fmt com 2 casas decimais</span></span>
+<span id="cb15-33"><a href="#cb15-33" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="fu">c</span>(mediana, IQR, max), <span class="sc">~</span><span class="fu">fmt</span>(.x, <span class="at">dec =</span> <span class="dv">1</span>)))</span>
+<span id="cb15-34"><a href="#cb15-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-35"><a href="#cb15-35" aria-hidden="true" tabindex="-1"></a><span class="fu">kable</span>(resumo_tempo_seguimento,</span>
+<span id="cb15-36"><a href="#cb15-36" aria-hidden="true" tabindex="-1"></a>      <span class="at">caption =</span> <span class="st">"Tempo de seguimento em dias, semanas, meses e anos (mediana, IQR, máximo)"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Tempo de seguimento em dias, semanas, meses e anos (mediana, IQR, máximo)</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">tempo</th>
+<th style="text-align: left;">mediana</th>
+<th style="text-align: left;">IQR</th>
+<th style="text-align: left;">max</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">dias</td>
+<td style="text-align: left;">563,5</td>
+<td style="text-align: left;">971,2</td>
+<td style="text-align: left;">2.800,0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">semanas</td>
+<td style="text-align: left;">80,5</td>
+<td style="text-align: left;">138,8</td>
+<td style="text-align: left;">400,0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">meses</td>
+<td style="text-align: left;">18,5</td>
+<td style="text-align: left;">31,9</td>
+<td style="text-align: left;">92,0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">anos</td>
+<td style="text-align: left;">1,5</td>
+<td style="text-align: left;">2,7</td>
+<td style="text-align: left;">7,7</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Tabela com as estatísticas dos TEMPOS MÉDIOS entre consultas</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>resumo_intervalos_consultas <span class="ot">&lt;-</span> indicadores_atendimento <span class="sc">%&gt;%</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">dias_mediana    =</span> <span class="fu">median</span>(tempo_medio_entre_consultas_dias, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">dias_IQR        =</span> <span class="fu">IQR</span>(tempo_medio_entre_consultas_dias, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">dias_max        =</span> <span class="fu">max</span>(tempo_medio_entre_consultas_dias, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">semanas_mediana =</span> <span class="fu">median</span>(tempo_medio_entre_consultas_semanas, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">semanas_IQR     =</span> <span class="fu">IQR</span>(tempo_medio_entre_consultas_semanas, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">semanas_max     =</span> <span class="fu">max</span>(tempo_medio_entre_consultas_semanas, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">meses_mediana   =</span> <span class="fu">median</span>(tempo_medio_entre_consultas_meses, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">meses_IQR       =</span> <span class="fu">IQR</span>(tempo_medio_entre_consultas_meses, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a>    <span class="at">meses_max       =</span> <span class="fu">max</span>(tempo_medio_entre_consultas_meses, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-16"><a href="#cb16-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">anos_mediana    =</span> <span class="fu">median</span>(tempo_medio_entre_consultas_anos, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb16-17"><a href="#cb16-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">anos_IQR        =</span> <span class="fu">IQR</span>(tempo_medio_entre_consultas_anos, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb16-18"><a href="#cb16-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">anos_max        =</span> <span class="fu">max</span>(tempo_medio_entre_consultas_anos, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb16-19"><a href="#cb16-19" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb16-20"><a href="#cb16-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(</span>
+<span id="cb16-21"><a href="#cb16-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">cols =</span> <span class="fu">everything</span>(),</span>
+<span id="cb16-22"><a href="#cb16-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">names_to =</span> <span class="fu">c</span>(<span class="st">"tempo"</span>, <span class="st">"estatistica"</span>),</span>
+<span id="cb16-23"><a href="#cb16-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">names_sep =</span> <span class="st">"_"</span>,</span>
+<span id="cb16-24"><a href="#cb16-24" aria-hidden="true" tabindex="-1"></a>    <span class="at">values_to =</span> <span class="st">"valor"</span></span>
+<span id="cb16-25"><a href="#cb16-25" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb16-26"><a href="#cb16-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(</span>
+<span id="cb16-27"><a href="#cb16-27" aria-hidden="true" tabindex="-1"></a>    <span class="at">names_from =</span> estatistica,</span>
+<span id="cb16-28"><a href="#cb16-28" aria-hidden="true" tabindex="-1"></a>    <span class="at">values_from =</span> valor</span>
+<span id="cb16-29"><a href="#cb16-29" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span></span>
+<span id="cb16-30"><a href="#cb16-30" aria-hidden="true" tabindex="-1"></a>  <span class="co"># formatação com vírgula e 2 casas decimais usando sua função `fmt`</span></span>
+<span id="cb16-31"><a href="#cb16-31" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="fu">c</span>(mediana, IQR, max), <span class="sc">~</span> <span class="fu">fmt</span>(.x, <span class="at">dec =</span> <span class="dv">2</span>)))</span>
+<span id="cb16-32"><a href="#cb16-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-33"><a href="#cb16-33" aria-hidden="true" tabindex="-1"></a><span class="fu">kable</span>(</span>
+<span id="cb16-34"><a href="#cb16-34" aria-hidden="true" tabindex="-1"></a>  resumo_intervalos_consultas,</span>
+<span id="cb16-35"><a href="#cb16-35" aria-hidden="true" tabindex="-1"></a>  <span class="at">caption =</span> <span class="st">"Tempo médio entre consultas em dias, semanas, meses e anos (mediana, IQR, máximo)"</span></span>
+<span id="cb16-36"><a href="#cb16-36" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Tempo médio entre consultas em dias, semanas, meses e anos (mediana, IQR, máximo)</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">tempo</th>
+<th style="text-align: left;">mediana</th>
+<th style="text-align: left;">IQR</th>
+<th style="text-align: left;">max</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">dias</td>
+<td style="text-align: left;">120,68</td>
+<td style="text-align: left;">68,78</td>
+<td style="text-align: left;">777,00</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">semanas</td>
+<td style="text-align: left;">17,24</td>
+<td style="text-align: left;">9,82</td>
+<td style="text-align: left;">111,00</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">meses</td>
+<td style="text-align: left;">3,96</td>
+<td style="text-align: left;">2,26</td>
+<td style="text-align: left;">25,53</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">anos</td>
+<td style="text-align: left;">0,33</td>
+<td style="text-align: left;">0,19</td>
+<td style="text-align: left;">2,13</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<blockquote class="blockquote">
+<p>Resultado: O tempo de seguimento dos pacientes apresentou grande amplitude, variando de algumas semanas a mais de 7 anos. A mediana foi de <strong>18,5 meses</strong> (IQR: 31,9), equivalente a <strong>1,5 anos</strong> (IQR: 2,7), com máximo de <strong>7,7 anos</strong> de acompanhamento. Esse resultado indica que metade dos pacientes foi acompanhada por até um ano e meio, enquanto uma parcela menor permaneceu em seguimento prolongado por vários anos.<br>
+O intervalo médio entre consultas também variou substancialmente. A mediana foi de aproximadamente <strong>120 dias</strong> (IQR: 68,8), o que corresponde a cerca de <strong>4 meses</strong> entre atendimentos. O percentil superior mostra que alguns pacientes chegaram a intervalos médios de até <strong>777 dias</strong> (mais de 2 anos) entre consultas, sugerindo padrões heterogêneos de acompanhamento.<br>
+Em conjunto, esses achados mostram que a maioria dos pacientes foi acompanhada em intervalos regulares de poucos meses, porém com expressiva variação tanto na duração total do seguimento quanto na frequência dos atendimentos.</p>
+</blockquote>
+<blockquote class="blockquote">
+<p>Resultado (versão curta): O tempo de seguimento variou amplamente, com mediana de 1,5 anos e máximo de 7,7 anos. O intervalo médio entre consultas foi de aproximadamente 4 meses (mediana: 120 dias), mas com grande heterogeneidade entre os pacientes. O gráfico de dispersão mostra que, embora a maioria mantenha retornos regulares em intervalos de até 6 meses, em seguimentos mais longos surgem casos com espaçamento progressivamente maior entre consultas, alcançando mais de um ano.</p>
+</blockquote>
+<blockquote class="blockquote">
+<p>Discussão: Os achados referentes ao tempo de seguimento e ao intervalo médio entre consultas sugerem um padrão heterogêneo de acompanhamento. A maioria dos pacientes manteve retornos em intervalos regulares de 3 a 6 meses, consistentes com a prática clínica de monitoramento contínuo em programas de tratamento da obesidade. Entretanto, nos casos de seguimento mais longo observou-se um aumento progressivo na variabilidade, incluindo pacientes com intervalos superiores a 12 meses entre consultas. Esse comportamento pode refletir múltiplos fatores: melhora clínica inicial que reduziu a necessidade de acompanhamento frequente; dificuldades logísticas de comparecimento, como barreiras de acesso e disponibilidade de serviços; ou ainda abandono parcial do acompanhamento formal, com manutenção apenas de retornos ocasionais.<br>
+A presença desses dois perfis distintos — pacientes com consultas regulares e outros com retornos esparsos ao longo do tempo — tem implicações metodológicas e clínicas. Do ponto de vista analítico, sugere cautela na interpretação das trajetórias de peso, já que o espaçamento desigual pode introduzir vieses na avaliação da evolução longitudinal. Do ponto de vista clínico, evidencia a importância de estratégias que promovam maior adesão ao acompanhamento, sobretudo em seguimentos prolongados, para garantir a continuidade do cuidado e a detecção precoce de complicações associadas à obesidade.</p>
+</blockquote>
+<div class="cell" data-layout-align="center">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(indicadores_atendimento,</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x =</span> tempo_seguimento_anos,</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>           <span class="at">y =</span> tempo_medio_entre_consultas_meses)) <span class="sc">+</span></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">alpha =</span> <span class="fl">0.5</span>) <span class="sc">+</span></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_smooth</span>(<span class="at">method =</span> <span class="st">"lm"</span>, <span class="at">se =</span> <span class="cn">FALSE</span>, <span class="at">color =</span> <span class="st">"blue"</span>, <span class="at">linewidth =</span> <span class="fl">0.8</span>) <span class="sc">+</span></span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_continuous</span>(<span class="at">breaks =</span> <span class="fu">seq</span>(<span class="dv">0</span>, <span class="fu">max</span>(indicadores_atendimento<span class="sc">$</span>tempo_seguimento_anos, <span class="at">na.rm =</span> <span class="cn">TRUE</span>), <span class="at">by =</span> <span class="dv">1</span>)) <span class="sc">+</span></span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_y_continuous</span>(<span class="at">breaks =</span> <span class="fu">seq</span>(<span class="dv">0</span>, <span class="fu">max</span>(indicadores_atendimento<span class="sc">$</span>tempo_medio_entre_consultas_meses, <span class="at">na.rm =</span> <span class="cn">TRUE</span>), <span class="at">by =</span> <span class="dv">2</span>)) <span class="sc">+</span></span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"Tempo de seguimento (anos)"</span>,</span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">"Tempo médio entre consultas (meses)"</span></span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">12</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>`geom_smooth()` using formula = 'y ~ x'</code></pre>
+</div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="outputs/figs/seguimento-vs-intervalo-1.png" class="img-fluid figure-img"></p>
+<figcaption>Relação entre tempo total de seguimento e intervalo médio entre consultas</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>O gráfico de dispersão mostra a relação entre o <strong>tempo total de seguimento</strong> (eixo X, em anos) e o <strong>intervalo médio entre consultas</strong> (eixo Y, em meses) para cada paciente. Cada ponto representa um indivíduo, e a linha azul corresponde à tendência linear ajustada.</p>
+<p>Observa-se que a maioria dos pacientes apresenta <strong>intervalos médios entre consultas de 2 a 6 meses</strong>, independentemente da duração total do seguimento. Contudo, conforme o tempo de acompanhamento aumenta, surgem pacientes com intervalos progressivamente maiores, alguns ultrapassando <strong>12 meses</strong> e chegando a mais de <strong>20 meses</strong> entre consultas em média. Isso explica a discreta inclinação positiva da linha de tendência: em média, pacientes com seguimento mais longo tendem a apresentar <strong>consultas mais espaçadas</strong>.</p>
+<p>O padrão sugere dois grupos distintos:<br>
+1. <strong>Seguimento curto a intermediário (até 2 anos)</strong> — caracterizado por alta densidade de pontos e intervalos médios regulares, geralmente abaixo de 6 meses.<br>
+2. <strong>Seguimento prolongado (acima de 3–4 anos)</strong> — inclui pacientes com <strong>intervalos heterogêneos</strong>, variando de intervalo de seguimento regular até casos com retornos muito espaçados (&gt;1 ano).</p>
+<p>Esse achado reforça que, embora a mediana global seja de aproximadamente <strong>4 meses entre consultas</strong>, há <strong>grande heterogeneidade individual</strong>, especialmente entre pacientes mantidos em seguimento por períodos mais longos.</p>
+<blockquote class="blockquote">
+<p>Legenda Figura X. Relação entre o tempo total de seguimento (anos) e o intervalo médio entre consultas (meses). Cada ponto representa um paciente; a linha azul indica a tendência linear. Observa-se que, embora a maioria mantenha intervalos regulares de até 6 meses, em seguimentos prolongados surgem casos com retornos mais espaçados, chegando a mais de um ano.</p>
+</blockquote>
+</section>
+<section id="proporção-de-indivíduos-com-peso-final-maior-que-o-inicial." class="level3">
+<h3 class="anchored" data-anchor-id="proporção-de-indivíduos-com-peso-final-maior-que-o-inicial.">1.6. Proporção de indivíduos com peso final maior que o inicial.</h3>
+</section>
+<section id="proporção-de-consultas-a-partir-da-segunda-com-ganho-ou-perda-de-peso-em-relação-à-anterior." class="level3">
+<h3 class="anchored" data-anchor-id="proporção-de-consultas-a-partir-da-segunda-com-ganho-ou-perda-de-peso-em-relação-à-anterior.">1.7. Proporção de consultas (a partir da segunda) com ganho ou perda de peso em relação à anterior.</h3>
+</section>
+</section>
+<section id="análises-pelo-tempo-de-seguimento" class="level2">
+<h2 class="anchored" data-anchor-id="análises-pelo-tempo-de-seguimento">2. Análises pelo tempo de seguimento</h2>
+<section id="comparar-a-porcentagem-máxima-de-perda-de-peso-entre-seguimento-12-meses-e-12-meses-ajustando-por-sexo-etnia-idade-imc-inicial-comorbidades-e-uso-de-medicação." class="level3">
+<h3 class="anchored" data-anchor-id="comparar-a-porcentagem-máxima-de-perda-de-peso-entre-seguimento-12-meses-e-12-meses-ajustando-por-sexo-etnia-idade-imc-inicial-comorbidades-e-uso-de-medicação.">2.1. Comparar a porcentagem máxima de perda de peso entre seguimento ≤12 meses e &gt;12 meses, ajustando por sexo, etnia, idade, IMC inicial, comorbidades e uso de medicação.</h3>
+</section>
+<section id="avaliar-associação-da-perda-de-peso-máxima-com-variáveis-demográficas-clínicas-e-de-seguimento." class="level3">
+<h3 class="anchored" data-anchor-id="avaliar-associação-da-perda-de-peso-máxima-com-variáveis-demográficas-clínicas-e-de-seguimento.">2.2. Avaliar associação da perda de peso máxima com variáveis demográficas, clínicas e de seguimento.</h3>
+</section>
+<section id="descrever-o-momento-em-que-cada-indivíduo-atingiu-5-de-perda-em-relação-ao-peso-inicial." class="level3">
+<h3 class="anchored" data-anchor-id="descrever-o-momento-em-que-cada-indivíduo-atingiu-5-de-perda-em-relação-ao-peso-inicial.">2.3. Descrever o momento em que cada indivíduo atingiu ≥5% de perda em relação ao peso inicial.</h3>
+</section>
+</section>
+<section id="subgrupos-com-perda-5" class="level2">
+<h2 class="anchored" data-anchor-id="subgrupos-com-perda-5">3. Subgrupos com perda ≥5%</h2>
+<section id="identificar-o-tempo-e-a-consulta-da-primeira-observação-de-perda-5." class="level3">
+<h3 class="anchored" data-anchor-id="identificar-o-tempo-e-a-consulta-da-primeira-observação-de-perda-5.">3.1. Identificar o tempo e a consulta da primeira observação de perda ≥5%.</h3>
+</section>
+<section id="medidas-de-frequência-de-reganho-de-peso-após-a-perda-5." class="level3">
+<h3 class="anchored" data-anchor-id="medidas-de-frequência-de-reganho-de-peso-após-a-perda-5.">3.2. Medidas de frequência de reganho de peso após a perda ≥5%.</h3>
+</section>
+<section id="comparar-a-perda-máxima-entre-subgrupos-6-meses-612-meses-12-meses." class="level3">
+<h3 class="anchored" data-anchor-id="comparar-a-perda-máxima-entre-subgrupos-6-meses-612-meses-12-meses.">3.3. Comparar a perda máxima entre subgrupos (≤6 meses, 6–12 meses, &gt;12 meses).</h3>
+</section>
+</section>
+<section id="grupo-sem-perda-5" class="level2">
+<h2 class="anchored" data-anchor-id="grupo-sem-perda-5">4. Grupo sem perda ≥5%</h2>
+<section id="identificar-tempo-de-seguimento-e-consulta-com-maior-perda-observada." class="level3">
+<h3 class="anchored" data-anchor-id="identificar-tempo-de-seguimento-e-consulta-com-maior-perda-observada.">4.1. Identificar tempo de seguimento e consulta com maior perda observada.</h3>
+</section>
+<section id="descrever-o-ganho-de-peso-após-esse-momento." class="level3">
+<h3 class="anchored" data-anchor-id="descrever-o-ganho-de-peso-após-esse-momento.">4.2. Descrever o ganho de peso após esse momento.</h3>
+</section>
+</section>
+</section>
+
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" id="quarto-reuse"><h2 class="anchored quarto-appendix-heading">Reuse</h2><div class="quarto-appendix-contents"><div><a rel="license" href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a></div></div></section></div></main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    // For code content inside modals, clipBoardJS needs to be initialized with a container option
+    // TODO: Check when it could be a function (https://github.com/zenorocha/clipboard.js/issues/860)
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+<script src="2_obesity_files/libs/quarto-html/zenscroll-min.js"></script>
+</body></html>

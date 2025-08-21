@@ -1,0 +1,296 @@
+---
+title: "Anthropometric"
+format: html
+---
+
+# Anthropometric measures
+
+```{r}
+#| label: anthropometric, all patients
+
+monitorizacao <- read_excel(here("data","Levantamento_GLPI_58686_Sol_123_2023_Monitorizacao_Isabela.xlsx"), sheet = 1) %>% 
+  select(
+    record_id, type, date, value
+  )
+
+weight <- monitorizacao %>% 
+  filter(
+    type == "weight_kg"
+  ) %>% 
+  select(
+    record_id, date, value
+  ) %>% 
+  rename(
+    date_weight = date,
+    weight_kg = value
+  )
+
+alturas_faltantes <- read_excel(here("data","alturas_faltantes.xlsx")) %>% janitor::clean_names() %>% 
+  filter(
+    !is.na(altura_metros_ponto_como_separador_decimal)
+  ) %>% 
+  select(
+    record_id = registro,
+    height_m = altura_metros_ponto_como_separador_decimal) %>% 
+  mutate(
+    height_m = as.numeric(height_m)
+  )
+
+alturas_faltantes_records <- alturas_faltantes %>% pull(record_id)
+
+height <- monitorizacao %>% 
+  filter(
+    type == "height_m"
+    ) %>% 
+  select(
+    record_id, date, value
+  ) %>% 
+  rename(
+    height_m = value,
+    date_height = date)
+
+height_records <- height %>% pull(record_id)
+
+```
+
+
+## Joining consultations, height and weight
+
+1. Issue:
+
+I want to create a new df based on joining two df: x = `consultas_2` and y = `weight_2` (and `height_m`), such that the new df will add 2 columns from y to x. Naturally, `height_m` (from df `height_2`) and `weight_kg` (from df  `weight_2`) should be matched by record_id. However, this is a longitudinal database, each `record_id` has multiple rows in all three dfs (`consultas_2`, `weight_2` and `height_2`).
+
+Ideally, `height_m` and `weight_kg` should also be matched by `date` in addition to `record_id`. However, some rows from `consultas_2` might not have exact date matches for `height_m` and `weight_kg`. In that case, for each consultation date (`consultas_2$date`), `height_m` and `weight_kg` should be matched from the measurement date (`height_2$date` and `weight_2$date`) that is closes to the actual consultation date (`consultas_2$date`). 
+
+There are several solutions to this problem: using `fuzzyjoin`, `data.table`, or `purr`. If you’re looking for the simplest approach, fuzzyjoin is the easiest to learn as it closely follows dplyr syntax and allows fuzzy matching with minimal effort. If speed and efficiency are your priority, especially with large datasets, data.table is the fastest, using optimized rolling joins (roll = "nearest") but has a steeper learning curve. For a pure Tidyverse solution, purrr offers the most flexibility but requires complex row-wise operations and is harder to master.
+
+2. Issue:
+
+I want to create a new df based on joining two df: x = `consultas_2` and y = `weight_2`, such that the new df will add 2 columns from y (`weight_2$date_weight` and `weight_2$weight_kg`) to x. The main primary and foreign key is `record_id`. However, this is a longitudinal database. So, both  x = `consultas_2` and y = `weight_2` have multiple observations from the same `record_id` --- making this a many-to-many join.
+
+However, I want to join `weight_2$date_weight` and `weight_2$weight_kg` from y = `weight_2` to x = `consultas_2` such that `weight_2$date_weight` from y is the date closest to `consultas_2$date_consultation`.
+
+`fuzzyjoin::difference_left_join()` **can** solve the problem, but it (a) returns **all** weight records whose date lies within the window you set and (b) still needs a second step to keep **only the single closest** one.  
+For this particular “give-me-the‐nearest-date within each *record_id*” task, a **rolling join in `{data.table}`** is both clearer and faster:
+
+### Weight
+
+Exact match. Fetch weight that was measured on the same day as the medical consultation. Let's check if the keys are valid. First, check for duplicates.
+
+```{r}
+consultas_2 %>% 
+  count(record_id, date_consultation) %>% 
+  filter(n > 1)
+```
+
+`consultas_2` has 9 records with duplicated record_id + date_consultation pairs, as if the patient had undergone two evaluations on the same date. So, this has to be corrected and duplicated pairs removed.
+
+```{r}
+consultas_2 <- consultas_2 %>% 
+  distinct(record_id, date_consultation, .keep_all = TRUE)
+```
+
+Let's recheck for duplicated pairs:
+
+```{r}
+consultas_2 %>% 
+  count(record_id, date_consultation) %>% 
+  filter(n > 1)
+```
+
+Ok, now we're set with `consultas_2`. Moving on to `weight_2`
+
+```{r}
+weight_2 %>% 
+  count(record_id, date_weight) %>% 
+  filter(n > 1)
+```
+
+Surprissingly, `weight_2` has 271 duplicated values of weight measurements on the same day. Let's try to figure out what's going on.
+
+```{r}
+weight_2 %>% 
+  group_by(record_id, date_weight) %>% 
+  filter(n() > 1) %>% 
+  summarise(
+    n = n(),
+    min = min(weight_kg),
+    max = max(weight_kg),
+    sd = sd(weight_kg)
+  ) %>% 
+  arrange(desc(sd)) %>% 
+  ungroup()
+```
+
+About 20 observations have unrealistic weight variations on the same day. Assuming the worst case scenario, we'll keep the heighest weights of the day.
+
+```{r}
+weight_nodups <- weight_2 %>% 
+  group_by(record_id, date_weight) %>%          # define the pair
+  slice_max(weight_kg, n = 1, with_ties = FALSE) %>%  # keep the max
+  ungroup()
+```
+
+Now let's double check that all values are unique and that there are no missing values:
+
+```{r}
+weight_nodups %>% 
+  count(record_id, date_weight) %>% 
+  filter(n > 1)
+
+weight_nodups %>% filter(is.na(record_id))
+
+weight_nodups %>% filter(is.na(date_weight))
+```
+
+Perfect. Let's procede with the join:
+
+```{r}
+consultas_weight <- left_join(x = consultas_2, y = weight_nodups,
+    by = join_by(record_id, date_consultation == date_weight)
+  )
+```
+
+How many NAs for the weight measurement?
+
+```{r}
+consultas_weight %>% filter(is.na(weight_kg)) %>% nrow()
+```
+This is a very large proportion: `r consultas_weight %>% filter(is.na(weight_kg)) %>% nrow()` out of `r nrow(consultas_2)`, or `r (consultas_weight %>% filter(is.na(weight_kg)) %>% nrow())/(nrow(consultas_2))`% of consultations do not have a recorded weight. 
+
+I can think of two options from now on:
+
+1. Force include a weight parameter for all consultation dates, fetching the weight measurement closest to the consultation date using a fuzzy join. However, this means that the resulting weights will be biased and not 100% correct. Perhaps another option is to set a limit; for example, fetch weights measured up to 10 days from the consultation. 
+
+2. Work with the data we have. 
+
+The code below is an attempt at option 1, but, for now, the code is not being evaluated. 
+
+#### Force weight join
+
+Include a weight parameter for all consultation dates, fetching the weight that closest to the consultation date, in case there is no exactl match.
+
+Using `{data.table}`: `help(package = "data.table")`
+
+```{r}
+#| eval: false
+
+library(data.table)
+
+consultas_dt <- copy(consultas_2)
+weight_dt <- copy(weight_2)
+
+# convert to data.table and set keys
+setDT(consultas_dt)
+setDT(weight_dt)
+setkey(weight_dt, record_id, date_weight)
+setkey(consultas_dt, record_id, date_consultation)
+
+# rolling join: for every consultation pick the weight whose date_weight is **nearest** (ties → earlier date)
+consultas_w <- weight_dt[
+  consultas_dt,                     # RHS = look-up table
+  on   = .(record_id, date_weight = date_consultation),
+  roll = "nearest"                  # <- magic sauce
+]
+```
+
+
+### Heights
+
+Let's start by checking the variation in heights to determine if it would be ok to use a patient's mean or median height. This would avoid having to to fuzzy joins or leftm joins for each consultation data + height pairs. But before we do that, let's check if there are records with multiple measurements on the same day.
+
+```{r}
+height %>% 
+  count(record_id, date_height) %>% 
+  filter(n > 1) %>% 
+  arrange(desc(n))
+```
+
+And the answer is yes. There are 68 records with 2 or 3 height measurements on the same day. Let's check the within-day variation.
+
+```{r}
+within_day_heights <-  height %>% 
+  count(record_id, date_height) %>% 
+  filter(n > 1) %>% 
+  arrange(desc(n)) %>% 
+  pull(record_id)
+
+height %>% 
+  filter(record_id %in% within_day_heights) %>% 
+  group_by(record_id, date_height) %>% 
+  summarise(
+    n = n(),
+    min = min(height_m),
+    max = max(height_m),
+    sd = sd(height_m)
+  ) %>% 
+  arrange(desc(sd)) %>% 
+  ungroup() %>% 
+  filter(n > 1)
+```
+I guess it would be ok to use the mean in this case. 
+
+Let's check overall.
+
+```{r}
+heights_sd <- height %>% 
+  group_by(record_id) %>% 
+  summarise(
+    n = n(),
+    min = min(height_m),
+    max = max(height_m),
+    sd = sd(height_m)
+  ) %>% 
+  arrange(desc(sd)) %>% 
+  ungroup()
+
+heights_sd
+```
+Let's check patient's ages at the beginning of follow-up:
+
+```{r}
+heights_sd <- left_join(
+  x = heights_sd,
+  y = patients_2 %>% select(record_id, age),
+  by = "record_id"
+)
+
+heights_sd
+```
+The patients with the most concerning height variations were not adolescents during the beginning of the follow-up. So, we assume the height variations are not due to growth, but errors in data collection. Since they have multiple measurements, and to avoid severe errors in magnitude if we were to use the mean, we'll use the `median` height value for each patient. 
+
+```{r}
+patient_heights <- height %>% 
+  group_by(record_id) %>% 
+  summarise(
+    height_m = median(height_m)
+  ) %>% 
+  ungroup()
+
+patient_heights
+```
+
+Ok, now let's bind the height of patients that did not have any height measurements recorded, and for whom a height measurement was collected directly from the *electronic medical record (EMR)*.
+
+```{r}
+patient_heights <- bind_rows(patient_heights, alturas_faltantes)
+patient_heights
+```
+
+Now, join patient heights to patient index and consultations.
+
+```{r}
+patients_3 <- left_join(
+  x = patients_2,
+  y = patient_heights,
+  by = "record_id"
+)
+
+patients_3
+
+consultas_wh <- left_join(
+  x = consultas_weight,
+  y = patient_heights,
+  by = "record_id"
+)
+```

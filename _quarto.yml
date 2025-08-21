@@ -1,29 +1,45 @@
 project:
   title: "My Research Project"
   type: default
-site: "https://github.com/gsplmoura"
+  output-dir: outputs
+  # opcional: renderizar só arquivos .qmd da raiz
+  # render:
+  #   - "*.qmd"
+
 author:
   - name: "**Gustavo Santos Paiva Laender Moura**"
     affiliation: "University of São Paulo, Ribeirão Preto Medical School, Department of Internal Medicine"
     email: "gsplmoura@usp.br"
+
+site: "https://github.com/gsplmoura"
 date: today
 
-# Execution Options (Controls Code Execution)
+# Execução (R/knitr)
 execute:
   eval: true
   echo: true
   output: true
-  warning: false
-  message: false
-  error: false
   cache: true
-  freeze: auto
-  fig-width: 7
-  fig-height: 5
+  # cache-dir: outputs   # <- vale para Jupyter; para R/knitr use knitr.opts_chunk.cache.path
+  # warning: false
+  # message: false
+  # error: false
+  # freeze: auto
   dpi: 300
   fig-format: png
 
-# Formatting Options for Output
+# knitr (R)
+knitr:
+  opts_chunk:
+    dev: "png"
+    fig.align: "center"
+    fig.width: 6
+    fig.height: 4
+    cache: true
+    cache.path: "outputs/.knitr-cache/"   # <- cache do knitr vai para outputs
+    fig.path: "outputs/figs/" # opcional: mandar figuras para uma pasta dentro de outputs
+
+# Formatos de saída
 format:
   html:
     theme: flatly
@@ -53,12 +69,12 @@ format:
     variant: gfm
     preserve-yaml: true
 
-# Language Settings
+# Idioma
 lang: en
 lang-title: "Title"
 lang-abstract: "Abstract"
 
-# Citations and References
+# Referências
 bibliography:
   - Library/BibTeX/article.bib
   - Library/BibTeX/book.bib
@@ -74,17 +90,10 @@ bibliography:
   - Library/BibTeX/proceedings.bib
   - Library/BibTeX/techreport.bib
   - Library/BibTeX/unpublished.bib
-#csl: apa.csl
+
+# csl: apa.csl
 link-citations: true
 link-bibliography: true
-
-# Code Block Defaults
-knitr:
-  opts_chunk:
-    dev: "png"
-    fig.align: "center"
-    fig.width: 6
-    fig.height: 4
 
 # Cross-referencing
 crossref:
@@ -92,19 +101,10 @@ crossref:
   tbl-prefix: "Table"
   eq-prefix: "Equation"
 
-# Quarto Extensions
-#filters:
-#  - citations
-#  - crossref
-#  - knitr
-
-# License Information
+# Licença
 license: "CC BY 4.0"
 
-# Custom Variables
+# Parâmetros customizados
 params:
   data_source: "dataset.csv"
   analysis_type: "regression"
-
-# Output Directory
-#output-dir: "outputs"

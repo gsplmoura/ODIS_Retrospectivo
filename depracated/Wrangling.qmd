@@ -1,0 +1,676 @@
+---
+title: "ODIS Retrospectivo Data Wrangling"
+author: "Gustavo Santos Paiva Laender Moura"
+date: "`r Sys.Date()`"
+format:
+  html:
+    toc: true
+    toc-depth: 5
+    toc-float:
+      collapsed: false
+      smooth-scroll: true
+    number-sections: false
+  pdf:
+    toc: true
+    toc-depth: 5
+    number-sections: true
+execute:
+  cache: true
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+rm(list = ls())
+graphics.off()
+cat("\014")  # Clear any pending RStudio sessions or temporary files
+
+# Set global chunk options
+knitr::opts_chunk$set(
+  #echo = TRUE,        # Show code in output
+  #warning = FALSE,    # Hide warnings
+  #message = FALSE,    # Hide messages
+  fig.align = 'center', # Center figures
+  fig.width = 7,      # Default figure width (in inches)
+  fig.height = 5,     # Default figure height
+  out.width = "100%"  # Full-width figures
+)
+```
+
+```{r}
+#| label: load-packages
+#| echo: false
+
+library(tidyverse)
+library(readxl)
+library(janitor)
+library(here)
+library(skimr)
+library(lubridate)
+
+set_here("/Users/gustavosplmoura/Library/Mobile Documents/com~apple~CloudDocs/Medicina/Biblioteca/Data Science/Data Science/R_Projects_Research/ODIS_Retrospectivo")
+```
+
+# Index patient dataset
+
+```{r}
+#| label: Index patient dataset
+#| comment: Creates an index dataframe of distinct record_ids, representing the patients followed-up
+
+consultas <- read_delim(here("data","Levantamento_GLPI_58686_Sol_123_2023_Pacientes.csv"), delim = ";") %>% 
+  janitor::clean_names() %>%
+  mutate(
+    record_id = registro,
+    birthdate = dmy(dta_nascimento),
+    race = as.factor(raca_etnia),
+    sex = as.factor(idf_sexo),
+    death_date = dmy(dta_obito),
+  ) 
+```
+
+The `Index patient dataset` consists of *872 unique participants* and 5 variables, encompassing patient identifiers, demographic characteristics, and dates of birth and death. The `record_id` variable (character) serves as a unique identifier, with all values having a fixed length of 8 characters and no missing data. The dataset includes two date variables: `birthdate`, which is fully complete and ranges from January 18, 1927, to November 30, 2014, with a median birthdate of January 29, 1975; and `death_date`, which has *785 missing values (89.9%)*, indicating that most participants are still alive. The `race` variable (factor) has 5 categories, with the most common being “Branco” (white, 664 participants), followed by “Pardo” (mixed-race, 129 participants) and “Preto” (Black, 72 participants). The `sex` variable (factor) has two categories, with 553 females (63.4%) and 319 males (36.6%). The dataset is well-structured, with complete demographic information and some missing data in the mortality records.
+
+## Consultations
+
+```{r}
+#| label: Consultations
+#| comment: dataframe of all consultations, with patient's age at the date of the consulation
+
+consultas <- read_delim(here("data","Levantamento_GLPI_58686_Sol_123_2023_Pacientes.csv"), delim = ";") %>% 
+  janitor::clean_names() %>%
+  mutate(
+    date = dmy(dta_hor_consulta),
+  ) %>%
+  select(
+    record_id = registro, date
+    ) %>% 
+  left_join(patients %>% select(record_id, birthdate), 
+            by = "record_id"
+          ) %>% 
+  mutate(
+    age = as.numeric( # Converts duration object to numeric value
+      lubridate::interval(birthdate, date) / years(1))) # dyears(1) from lubridate: represents the duration of one year (365.25 days), ensuring leap years are accounted for.
+    
+
+#skimr::skim(consultas)
+```
+
+The consultas dataset contains 5,212 observations across 2 variables, representing multiple consultation records for 872 unique participants. The date variable (Date) captures the consultation dates, spanning from January 19, 2016, to October 24, 2023, with 367 unique dates. 
+
+### Age at consultation
+
+```{r}
+#| label: age at consultation
+# comment: creates two dataframes, one for underage and
+# another for over 18 year'old consultations, and record_ids 
+# who continued followup after coming of age.
+
+consultas_underage <- consultas %>% 
+  arrange(desc(age)
+    ) %>% 
+    filter(age < 18
+    ) %>% 
+  distinct(record_id, .keep_all = TRUE)
+
+consultas_adults <- consultas %>% 
+    arrange(desc(age)
+            ) %>%
+    filter(age >= 18
+           ) %>% 
+  distinct(record_id, .keep_all = TRUE)
+
+consultas_adults_records <- consultas_adults %>% pull(record_id)
+
+common_record_ids <- intersect(consultas_underage$record_id, consultas_adults$record_id)
+```
+
+- A total of `r nrow(consultas_underage)` patients were seen in the clinic while underage, accounting for `r sum(consultas$age < 18)` consultations. Of these, `r length(common_record_ids)` continued follow-up after reaching adulthood, leaving only `r nrow(consultas_underage) - length(common_record_ids)` patients who were underage throughout the entire follow-up period.
+
+```{r}
+# comment: age range of entire follow-up perior of the 
+# 6 patients who continued follow-up after reaching adulthood
+
+consultas %>% filter(
+  record_id %in% common_record_ids
+) %>% 
+  group_by(record_id) %>% 
+  summarize(
+    min = min(age),
+    max = max(age)
+  ) %>% 
+  ungroup() 
+```
+
+### Consultations of interest 
+
+Final consultation tibble containing `r consultas %>% filter(record_id %in% common_record_ids) %>% nrow()` consultations for the 6 patients who were followed up before and after the age of 18, as well as for the patients who began followup while older than 18 years old.
+
+```{r}
+#| label: Consultations of interest
+#| comment: Final consultation tibble containg all visits of interest
+
+consultas_final <- consultas %>% 
+  filter(
+    record_id %in% consultas_adults_records
+  ) %>% 
+  group_by(record_id) %>%
+  mutate(
+    n_visits = n()) %>% 
+  ungroup()
+
+```
+
+## Updating Index patient dataset
+
+```{r}
+#| label: Index patient dataset final
+#| comment: Creates an index dataframe of distinct record_ids, representing the patients followed-up, with only the first visit (i.e., the lowest age) for each record_id. This ensures each record_id appears only once, and that row corresponds to the patient’s earliest follow-up visit by age.
+
+patients_final <- consultas_final %>%
+  group_by(record_id) %>%
+  slice_min(age, with_ties = FALSE) %>%
+  ungroup() %>% 
+  left_join(patients %>% 
+               select(record_id, sex, race, death_date),
+             by = "record_id"
+  )
+  
+```
+
+## Summary
+
+### Index patient dataset
+
+Descriptive statistics of patient demographics.
+
+#### Sex
+
+- `r nrow(patients_final)` patients fitting the inclusion criteria were followed up during the analysed period.
+
+- `r patients_final %>% filter(!is.na(death_date)) %>% nrow()` patients died during follow-up.
+
+```{r}
+#| label: sex
+
+count(patients_final, sex, sort = TRUE) %>%
+  mutate(percent = round(100 * n / sum(n), 1))
+```
+
+- `r sum(patients_final$sex == "F")` (`r round(100 * mean(patients_final$sex == "F"), 1)`%) were female.
+
+#### Race
+
+```{r}
+#| label: race
+count(patients_final, race, sort = TRUE) %>%
+  mutate(percent = round(100 * n / sum(n), 1))
+```
+
+- Regarding ethnicity, 76.3% (n=653) were white and 14.7% (n=126) were mixed ethnicity.
+
+#### Age
+
+```{r}
+#| label: age
+patients_final %>% select(where(is.numeric)) %>% skim()
+```
+
+- The participants' ages at the start of follow-up range from `r round(min(patients_final$age),1)` to `r round(max(patients_final$age),1)` years, with a mean age of `r round(mean(patients_final$age), 1)` (SD = `r round(sd(patients_final$age), 1)`) years. The age distribution is approximately symmetric, with the 25th, 50th (median), and 75th percentiles at `r quantile(patients_final$age, 0.25)`, `r quantile(patients_final$age, 0.50)`, and `r quantile(patients_final$age, 0.75)` years, respectively.
+
+#### Number of visits
+
+```{r}
+#| label: n_visits
+patients_final %>% ggplot(aes(x=n_visits)) + geom_histogram()
+```
+
+- Regarding the number of visits per participant (`n_visits`), values range from `r min(patients_final$n_visits)` to `r max(patients_final$n_visits)`, with a positively skewed distribution. The mean number of visits is `r round(mean(patients_final$n_visits), 2)` (SD = `r round(sd(patients_final$n_visits), 2)`), and the median is `r median(patients_final$n_visits)` (IQR `r IQR(patients_final$n_visits)`; from `r quantile(patients_final$n_visits, 0.25)` to `r quantile(patients_final$n_visits, 0.75)`) visits, suggesting that most patients had relatively few visits, while a smaller number had considerably more.
+
+# Index patient dataset
+
+Of the `r nrow(patients_final)` patients, `r patients_final %>% filter(n_visits == 1) %>% nrow()` (`r round((patients_final %>% filter(n_visits == 1) %>% nrow())/(nrow(patients_final))*100, 1)`%) underwent a single visit at the clinic.
+
+However, since the aim is to measure longitudinal changes, we will also remove these patients who underwent a single visit.
+
+```{r}
+#| label: Index patient dataset >= 2 visits
+patients_2 <- patients_final %>% 
+  filter(
+    n_visits >= 2
+  )
+
+patients_pull <- patients_2 %>% pull(record_id)
+```
+
+```{r}
+#| label: Consultations of interest >= 2 visits
+consultas_2 <- consultas_final %>% 
+  filter(
+    record_id %in% patients_2$record_id
+  ) %>% 
+  rename(
+    date_consultation = date
+  )
+```
+
+#### Sex
+
+- `r nrow(patients_2)` patients fitting the age inclusion criteria and who attended to at least 2 consultations were followed up during the analysed period.
+
+- `r patients_2 %>% filter(!is.na(death_date)) %>% nrow()` patients died during follow-up.
+
+```{r}
+#| label: sex >= 2 visits
+
+count(patients_2, sex, sort = TRUE) %>%
+  mutate(percent = round(100 * n / sum(n), 1))
+```
+
+- `r sum(patients_2$sex == "F")` (`r round(100 * mean(patients_2$sex == "F"), 1)`%) were female.
+
+#### Race
+
+```{r}
+#| label: race >= 2 visits
+count(patients_2, race, sort = TRUE) %>%
+  mutate(percent = round(100 * n / sum(n), 1))
+```
+
+- Regarding ethnicity, `r count(patients_2, race) %>% mutate(percent = round(100 * n / sum(n), 1)) %>% filter(race == "Branco") %>% pull(percent)`% (n=`r count(patients_2, race) %>% filter(race == "Branco") %>% pull(n)`) were white and `r count(patients_2, race) %>% mutate(percent = round(100 * n / sum(n), 1)) %>% filter(race == "Mulato (Pardo)") %>% pull(percent)`% (n=`r count(patients_2, race) %>% filter(race == "Mulato (Pardo)") %>% pull(n)`) were of mixed ethnicity.
+
+#### Age
+
+```{r}
+#| label: age >= 2 visits
+patients_2 %>% select(where(is.numeric)) %>% skim()
+```
+
+- The participants' ages at the start of follow-up range from `r round(min(patients_2$age),1)` to `r round(max(patients_2$age),1)` years, with a mean age of `r round(mean(patients_2$age), 1)` (SD = `r round(sd(patients_2$age), 1)`) years. The age distribution is approximately symmetric, with the 25th, 50th (median), and 75th percentiles at `r round(quantile(patients_2$age, 0.25),1)`, `r round(quantile(patients_2$age, 0.50),1)`, and `r round(quantile(patients_2$age, 0.75),1)` years, respectively.
+
+#### Number of visits
+
+```{r}
+#| label: n_visits >= 2
+patients_2 %>% ggplot(aes(x=n_visits)) + geom_histogram()
+```
+
+- Regarding the number of visits per participant (`n_visits`), values range from `r min(patients_2$n_visits)` to `r max(patients_2$n_visits)`, with a positively skewed distribution. The mean number of visits is `r round(mean(patients_2$n_visits), 2)` (SD = `r round(sd(patients_2$n_visits), 2)`), and the median is `r median(patients_2$n_visits)` (IQR `r IQR(patients_2$n_visits)`; from `r quantile(patients_2$n_visits, 0.25)` to `r quantile(patients_2$n_visits, 0.75)`) visits, suggesting that most patients had relatively few visits, while a smaller number had considerably more.
+
+- The histogram of `n_visits` is characteristic of a **discrete count distribution**, and the shape suggests it aligns best with a **negative binomial distribution**. While the **Poisson distribution** is often used for count data, it assumes the mean and variance are equal. However, in this dataset, the variance of `n_visits` (`r round(var(patients_final$n_visits), 2)`) is notably higher than the mean (`r round(mean(patients_final$n_visits), 2)`), indicative of **overdispersion**, making the **negative binomial** a more appropriate theoretical model. This distribution is commonly seen in longitudinal clinical data, where a small subset of patients may require frequent follow-up while most have relatively few visits.
+
+
+# Anthropometric measures
+
+```{r}
+#| label: anthropometric, all patients
+
+monitorizacao <- read_excel(here("data","Levantamento_GLPI_58686_Sol_123_2023_Monitorizacao_Isabela.xlsx"), sheet = 1) %>% 
+  select(
+    record_id, type, date, value
+  )
+
+weight <- monitorizacao %>% 
+  filter(
+    type == "weight_kg"
+  ) %>% 
+  select(
+    record_id, date, value
+  ) %>% 
+  rename(
+    date_weight = date,
+    weight_kg = value
+  )
+
+alturas_faltantes <- read_excel(here("data","alturas_faltantes.xlsx")) %>% janitor::clean_names() %>% 
+  filter(
+    !is.na(altura_metros_ponto_como_separador_decimal)
+  ) %>% 
+  select(
+    record_id = registro,
+    height_m = altura_metros_ponto_como_separador_decimal) %>% 
+  mutate(
+    height_m = as.numeric(height_m)
+  )
+
+alturas_faltantes_records <- alturas_faltantes %>% pull(record_id)
+
+height <- monitorizacao %>% 
+  filter(
+    type == "height_m"
+    ) %>% 
+  select(
+    record_id, date, value
+  ) %>% 
+  rename(
+    height_m = value,
+    date_height = date)
+
+height_records <- height %>% pull(record_id)
+
+```
+
+
+```{r}
+#| eval: false
+
+height %>% 
+  group_by(record_id) %>% 
+  summarise(
+    n_height_measurements = n(),
+    height_min = min(height_m),
+    height_max = max(height_m),
+    height_sd = sd(height_m)) %>% 
+  ungroup() %>% 
+  arrange(desc(height_sd))
+```
+
+```{r}
+#| label: anthropometric >= 2 visits
+
+weight_2 <- weight %>% 
+  filter(
+    record_id %in% patients_pull
+  )
+```
+
+## Joining consultations, height and weight
+
+1. Issue:
+
+I want to create a new df based on joining two df: x = `consultas_2` and y = `weight_2` (and `height_m`), such that the new df will add 2 columns from y to x. Naturally, `height_m` (from df `height_2`) and `weight_kg` (from df  `weight_2`) should be matched by record_id. However, this is a longitudinal database, each `record_id` has multiple rows in all three dfs (`consultas_2`, `weight_2` and `height_2`).
+
+Ideally, `height_m` and `weight_kg` should also be matched by `date` in addition to `record_id`. However, some rows from `consultas_2` might not have exact date matches for `height_m` and `weight_kg`. In that case, for each consultation date (`consultas_2$date`), `height_m` and `weight_kg` should be matched from the measurement date (`height_2$date` and `weight_2$date`) that is closes to the actual consultation date (`consultas_2$date`). 
+
+There are several solutions to this problem: using `fuzzyjoin`, `data.table`, or `purr`. If you’re looking for the simplest approach, fuzzyjoin is the easiest to learn as it closely follows dplyr syntax and allows fuzzy matching with minimal effort. If speed and efficiency are your priority, especially with large datasets, data.table is the fastest, using optimized rolling joins (roll = "nearest") but has a steeper learning curve. For a pure Tidyverse solution, purrr offers the most flexibility but requires complex row-wise operations and is harder to master.
+
+2. Issue:
+
+I want to create a new df based on joining two df: x = `consultas_2` and y = `weight_2`, such that the new df will add 2 columns from y (`weight_2$date_weight` and `weight_2$weight_kg`) to x. The main primary and foreign key is `record_id`. However, this is a longitudinal database. So, both  x = `consultas_2` and y = `weight_2` have multiple observations from the same `record_id` --- making this a many-to-many join.
+
+However, I want to join `weight_2$date_weight` and `weight_2$weight_kg` from y = `weight_2` to x = `consultas_2` such that `weight_2$date_weight` from y is the date closest to `consultas_2$date_consultation`.
+
+`fuzzyjoin::difference_left_join()` **can** solve the problem, but it (a) returns **all** weight records whose date lies within the window you set and (b) still needs a second step to keep **only the single closest** one.  
+For this particular “give-me-the‐nearest-date within each *record_id*” task, a **rolling join in `{data.table}`** is both clearer and faster:
+
+### Weight
+
+Exact match. Fetch weight that was measured on the same day as the medical consultation. Let's check if the keys are valid. First, check for duplicates.
+
+```{r}
+consultas_2 %>% 
+  count(record_id, date_consultation) %>% 
+  filter(n > 1)
+```
+
+`consultas_2` has 9 records with duplicated record_id + date_consultation pairs, as if the patient had undergone two evaluations on the same date. So, this has to be corrected and duplicated pairs removed.
+
+```{r}
+consultas_2 <- consultas_2 %>% 
+  distinct(record_id, date_consultation, .keep_all = TRUE)
+```
+
+Let's recheck for duplicated pairs:
+
+```{r}
+consultas_2 %>% 
+  count(record_id, date_consultation) %>% 
+  filter(n > 1)
+```
+
+Ok, now we're set with `consultas_2`. Moving on to `weight_2`
+
+```{r}
+weight_2 %>% 
+  count(record_id, date_weight) %>% 
+  filter(n > 1)
+```
+
+Surprissingly, `weight_2` has 271 duplicated values of weight measurements on the same day. Let's try to figure out what's going on.
+
+```{r}
+weight_2 %>% 
+  group_by(record_id, date_weight) %>% 
+  filter(n() > 1) %>% 
+  summarise(
+    n = n(),
+    min = min(weight_kg),
+    max = max(weight_kg),
+    sd = sd(weight_kg)
+  ) %>% 
+  arrange(desc(sd)) %>% 
+  ungroup()
+```
+
+About 20 observations have unrealistic weight variations on the same day. Assuming the worst case scenario, we'll keep the heighest weights of the day.
+
+```{r}
+weight_nodups <- weight_2 %>% 
+  group_by(record_id, date_weight) %>%          # define the pair
+  slice_max(weight_kg, n = 1, with_ties = FALSE) %>%  # keep the max
+  ungroup()
+```
+
+Now let's double check that all values are unique and that there are no missing values:
+
+```{r}
+weight_nodups %>% 
+  count(record_id, date_weight) %>% 
+  filter(n > 1)
+
+weight_nodups %>% filter(is.na(record_id))
+
+weight_nodups %>% filter(is.na(date_weight))
+```
+
+Perfect. Let's procede with the join:
+
+```{r}
+consultas_weight <- left_join(x = consultas_2, y = weight_nodups,
+    by = join_by(record_id, date_consultation == date_weight)
+  )
+```
+
+How many NAs for the weight measurement?
+
+```{r}
+consultas_weight %>% filter(is.na(weight_kg)) %>% nrow()
+```
+This is a very large proportion: `r consultas_weight %>% filter(is.na(weight_kg)) %>% nrow()` out of `r nrow(consultas_2)`, or `r (consultas_weight %>% filter(is.na(weight_kg)) %>% nrow())/(nrow(consultas_2))`% of consultations do not have a recorded weight. 
+
+I can think of two options from now on:
+
+1. Force include a weight parameter for all consultation dates, fetching the weight measurement closest to the consultation date using a fuzzy join. However, this means that the resulting weights will be biased and not 100% correct. Perhaps another option is to set a limit; for example, fetch weights measured up to 10 days from the consultation. 
+
+2. Work with the data we have. 
+
+The code below is an attempt at option 1, but, for now, the code is not being evaluated. 
+
+#### Force weight join
+
+Include a weight parameter for all consultation dates, fetching the weight that closest to the consultation date, in case there is no exactl match.
+
+Using `{data.table}`: `help(package = "data.table")`
+
+```{r}
+#| eval: false
+
+library(data.table)
+
+consultas_dt <- copy(consultas_2)
+weight_dt <- copy(weight_2)
+
+# convert to data.table and set keys
+setDT(consultas_dt)
+setDT(weight_dt)
+setkey(weight_dt, record_id, date_weight)
+setkey(consultas_dt, record_id, date_consultation)
+
+# rolling join: for every consultation pick the weight whose date_weight is **nearest** (ties → earlier date)
+consultas_w <- weight_dt[
+  consultas_dt,                     # RHS = look-up table
+  on   = .(record_id, date_weight = date_consultation),
+  roll = "nearest"                  # <- magic sauce
+]
+```
+
+
+### Heights
+
+Let's start by checking the variation in heights to determine if it would be ok to use a patient's mean or median height. This would avoid having to to fuzzy joins or leftm joins for each consultation data + height pairs. But before we do that, let's check if there are records with multiple measurements on the same day.
+
+```{r}
+height %>% 
+  count(record_id, date_height) %>% 
+  filter(n > 1) %>% 
+  arrange(desc(n))
+```
+
+And the answer is yes. There are 68 records with 2 or 3 height measurements on the same day. Let's check the within-day variation.
+
+```{r}
+within_day_heights <-  height %>% 
+  count(record_id, date_height) %>% 
+  filter(n > 1) %>% 
+  arrange(desc(n)) %>% 
+  pull(record_id)
+
+height %>% 
+  filter(record_id %in% within_day_heights) %>% 
+  group_by(record_id, date_height) %>% 
+  summarise(
+    n = n(),
+    min = min(height_m),
+    max = max(height_m),
+    sd = sd(height_m)
+  ) %>% 
+  arrange(desc(sd)) %>% 
+  ungroup() %>% 
+  filter(n > 1)
+```
+I guess it would be ok to use the mean in this case. 
+
+Let's check overall.
+
+```{r}
+heights_sd <- height %>% 
+  group_by(record_id) %>% 
+  summarise(
+    n = n(),
+    min = min(height_m),
+    max = max(height_m),
+    sd = sd(height_m)
+  ) %>% 
+  arrange(desc(sd)) %>% 
+  ungroup()
+
+heights_sd
+```
+Let's check patient's ages at the beginning of follow-up:
+
+```{r}
+heights_sd <- left_join(
+  x = heights_sd,
+  y = patients_2 %>% select(record_id, age),
+  by = "record_id"
+)
+
+heights_sd
+```
+The patients with the most concerning height variations were not adolescents during the beginning of the follow-up. So, we assume the height variations are not due to growth, but errors in data collection. Since they have multiple measurements, and to avoid severe errors in magnitude if we were to use the mean, we'll use the `median` height value for each patient. 
+
+```{r}
+patient_heights <- height %>% 
+  group_by(record_id) %>% 
+  summarise(
+    height_m = median(height_m)
+  ) %>% 
+  ungroup()
+
+patient_heights
+```
+
+Ok, now let's bind the height of patients that did not have any height measurements recorded, and for whom a height measurement was collected directly from the *electronic medical record (EMR)*.
+
+```{r}
+patient_heights <- bind_rows(patient_heights, alturas_faltantes)
+patient_heights
+```
+
+Now, join patient heights to patient index and consultations.
+
+```{r}
+patients_3 <- left_join(
+  x = patients_2,
+  y = patient_heights,
+  by = "record_id"
+)
+
+patients_3
+
+consultas_wh <- left_join(
+  x = consultas_weight,
+  y = patient_heights,
+  by = "record_id"
+)
+```
+
+# Consultations tibble
+
+Great, now we have a working dataframe (`consultas_wh`) that contains `r nrow(consultas_wh)` consultations with the following data: record_id, date of consultation, birthdate, age of start of follow-up, total number of follow-up visits, weight at each consultation and patient height. Additionally, the dataframe `patients_3` has updated patient demographic data as well as patient heights.
+
+```{r}
+consultas_wh
+```
+
+Let's skim this dataframe:
+
+```{r}
+skimr::skim(consultas_wh)
+```
+
+The dataframe has no missing values for record_id, birthdate, age and number of visits. It has a count of `r consultas_wh %>% filter(is.na(weight_kg)) %>% nrow()` (`r round((consultas_wh %>% filter(is.na(weight_kg)) %>% nrow())/(nrow(consultas_wh))*100,1)`%) missing weights and `r consultas_wh %>% filter(is.na(height_m)) %>% nrow()` (`r round((consultas_wh %>% filter(is.na(height_m)) %>% nrow())/(nrow(consultas_wh))*100,1)`%) missing heights. 
+
+## Complete cases
+
+```{r}
+consultas_complete <- consultas_wh %>% 
+  drop_na(weight_kg, height_m)
+```
+
+## BMI
+```{r}
+consultas_complete <- consultas_complete %>% 
+  mutate(
+    bmi = (weight_kg / (height_m * height_m))
+  )
+```
+
+## Left join
+
+```{r}
+consultas_patients <- left_join(
+  x = consultas_complete,
+  y = patients_3 %>% select(
+    record_id, sex, race, death_date
+  ),
+  by = "record_id"
+)
+```
+
+
+## Save
+
+```{r}
+#| label: save files
+
+# RDS
+write_rds(x = consultas_complete, file = here("data_output", "consultas_complete.rds"))
+write_rds(x = patients_3, file = here("data_output", "patients_index.rds"))
+write_rds(x = consultas_patients, file = here("data_output", "consultas_patients.rds"))
+
+# CSV
+write_csv(x = consultas_complete, file = here("data_output", "consultas_complete.csv"))
+write_csv(x = patients_3, file = here("data_output", "patients_index.csv"))
+write_csv(x = consultas_patients, file = here("data_output", "consultas_patients.csv"))
+```

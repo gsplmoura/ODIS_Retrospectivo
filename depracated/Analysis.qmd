@@ -1,0 +1,524 @@
+---
+title: "ODIS Retrospectivo Data Analysis"
+author: "Gustavo Santos Paiva Laender Moura"
+date: "`r Sys.Date()`"
+format:
+  html:
+    toc: true
+    toc-depth: 5
+    toc-float:
+      collapsed: false
+      smooth-scroll: true
+    number-sections: false
+  pdf:
+    toc: true
+    toc-depth: 5
+    number-sections: true
+#execute:
+#  cache: true
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+rm(list = ls())
+graphics.off()
+cat("\014")  # Clear any pending RStudio sessions or temporary files
+
+# Set global chunk options
+knitr::opts_chunk$set(
+  #echo = TRUE,        # Show code in output
+  #warning = FALSE,    # Hide warnings
+  #message = FALSE,    # Hide messages
+  fig.align = 'center', # Center figures
+  fig.width = 7,      # Default figure width (in inches)
+  fig.height = 5,     # Default figure height
+  out.width = "100%"  # Full-width figures
+)
+
+source("helper_functions.R")
+```
+
+```{r}
+#| label: load-packages
+#| echo: false
+
+library(tidyverse)
+library(readxl)
+library(janitor)
+library(here)
+library(skimr)
+library(lubridate)
+library(gt)
+
+set_here("/Users/gustavosplmoura/Library/Mobile Documents/com~apple~CloudDocs/Medicina/Biblioteca/Data Science/Data Science/R_Projects_Research/ODIS_Retrospectivo")
+```
+
+```{r}
+#| label: load-files
+#| echo: false
+
+consultas <- read_rds(file = here("data_output", "consultas_patients.rds"))
+patients <- read_rds(file = here("data_output", "patients_index.rds"))
+```
+
+# Descriptive
+
+## Patients
+
+After applying all of the inclusion and exclusion criteria, `r patients %>% distinct(record_id) %>% nrow()` patients were followed in the clinic during the period between `r min(patients$date, na.rm = TRUE)` and `r max(patients$date, na.rm = TRUE)`. Most \[n = `r sum(patients$sex == 'F', na.rm = TRUE)` (`r round((sum(patients$sex == 'F', na.rm = TRUE))/(nrow(patients))*100,1)`%) were female. The mean age at the start of follow-up was `r round(mean(patients$age),1)` (SD = `r round(sd(patients$age),1)`) years. Most \[n = `r sum(patients$race == 'Branco', na.rm = TRUE)` (`r round((sum(patients$race == 'Branco', na.rm = TRUE))/(nrow(patients))*100,1)`%)\] were white.
+
+```{r}
+patients %>% select(sex, race) %>% summarize_categorical() %>% knitr::kable()
+patients %>% select(age, n_visits) %>% summarize_numerical() %>% knitr::kable()
+```
+
+Regarding the number of visits per participant, values range from `r min(patients$n_visits)` to `r max(patients$n_visits)`, with a positively skewed distribution. The mean number of visits is `r round(mean(patients$n_visits), 2)` (SD = `r round(sd(patients$n_visits), 2)`), and the median is `r median(patients$n_visits)` (IQR `r quantile(patients$n_visits, 0.25)` - `r quantile(patients$n_visits, 0.75)`) visits.
+
+```{r}
+#| label: n_visits
+patients %>% ggplot(aes(x=n_visits)) + geom_histogram()
+```
+
+## Consultas (longitudinal)
+
+```{r}
+consultas
+```
+
+### Time of followup
+
+```{r}
+follow_up_time <- consultas %>% 
+  group_by(record_id) %>% 
+  summarise(
+    first_visit = min(date_consultation),
+    last_visit = max(date_consultation)
+  ) %>% 
+  mutate(
+    follow_up_time = difftime(last_visit, first_visit, units = "weeks")
+  )
+
+consultas <- consultas %>% 
+  left_join(
+    follow_up_time %>% select(record_id, follow_up_time),
+    by = "record_id")
+
+consultas %>%
+  group_by(record_id) %>%
+  slice_min(date_consultation) %>%
+  summarise(
+    sex = first(sex),
+    baseline_weight = first(weight_kg),
+    baseline_bmi = first(bmi),
+    n_visits = n(),
+    follow_up_time = max(follow_up_time),
+    .groups = "drop"
+  ) %>%
+  summary()
+
+```
+
+### Time since first visit
+
+```{r}
+consultas <- consultas %>%
+  mutate(date_consultation = as.Date(date_consultation)) %>%
+  group_by(record_id) %>%
+  mutate(
+    first_visit = min(date_consultation, na.rm = TRUE),
+    weeks_since_first = as.numeric(difftime(date_consultation, first_visit, units = "weeks"))
+  ) %>%
+  ungroup()
+```
+
+### BMI Trajectories Aligned by First Visit
+
+```{r}
+#| label: BMI Trajectories Aligned by First Visit
+
+ggplot(consultas, aes(x = weeks_since_first, y = bmi, group = record_id)) +
+  geom_line(alpha = 0.2) +
+  labs(
+    title = "BMI Trajectories Aligned by First Visit",
+    x = "Weeks Since First Visit",
+    y = "BMI"
+  ) +
+  theme_minimal()
+```
+
+### BMI Trajectories by Sex Aligned to First Visit
+
+```{r}
+#| label: BMI Trajectories by Sex Aligned to First Visit
+
+ggplot(consultas, aes(x = weeks_since_first, y = bmi)) +
+  # Faded individual trajectories
+  geom_line(aes(group = record_id), alpha = 0.1, color = "gray") +
+  
+  # Smoothed trendlines by sex
+  geom_smooth(aes(color = sex), method = "loess", se = TRUE, size = 1.2) +
+  
+  labs(
+    title = "BMI Trajectories by Sex Aligned to First Visit",
+    x = "Weeks Since First Visit",
+    y = "BMI",
+    color = "Sex"
+  ) +
+  theme_minimal()
+```
+
+### BMI Trajectories by Race Aligned to First Visit
+
+```{r}
+#| label: BMI Trajectories by Race Aligned to First Visit
+
+ggplot(consultas, aes(x = weeks_since_first, y = bmi)) +
+  # Faded individual trajectories
+  geom_line(aes(group = record_id), alpha = 0.1, color = "gray") +
+  
+  # Smoothed trendlines by race
+  geom_smooth(aes(color = race), method = "loess", se = TRUE, size = 1.2) +
+  
+  labs(
+    title = "BMI Trajectories by Race Aligned to First Visit",
+    x = "Weeks Since First Visit",
+    y = "BMI",
+    color = "Raça"
+  ) +
+  theme_minimal()
+```
+
+# Questions
+
+## Delayed weight loss response
+
+> Among patients who did not lose ≥10% of their weight in the first 12 months, how many achieve ≥10% total weight loss only after 12 months?
+
+This is a conditional analysis — focusing on non-responders at 12 months, and evaluating their weight loss beyond that point.
+
+1.  Use each patient’s first recorded weight:
+
+```{r}
+#| label: define baseline weight
+
+baseline_weight <- consultas %>%
+  group_by(record_id) %>%
+  summarise(
+    baseline_weight = weight_kg[which.min(date_consultation)],
+    .groups = "drop"
+  )
+```
+
+2.  Join baseline back and calculate percent weight loss from baseline
+
+```{r}
+#| label: percent weight loss
+
+consultas <- consultas %>%
+  left_join(baseline_weight, by = "record_id") %>%
+  mutate(
+    percent_weight_loss = 100 * (baseline_weight - weight_kg) / baseline_weight
+  )
+```
+
+```         
+2.1 Percent Weight Loss Over Time by Patient
+```
+
+```{r}
+    #| label: Percent Weight Loss Over Time by Patient
+    
+    ggplot(consultas, aes(x = weeks_since_first, y = percent_weight_loss, group = record_id)) +
+      geom_line(alpha = 0.4) +
+      labs(
+        title = "Percent Weight Loss Over Time by Patient",
+        x = "Weeks Since First Visit",
+        y = "Percent Weight Loss"
+      ) +
+      theme_minimal() +
+      coord_cartesian(ylim = c(-50, 50))
+```
+
+```{r}
+  #| label: Distribution of Percent Weight Loss
+    
+    ggplot(consultas, aes(x = percent_weight_loss)) +
+      geom_histogram() +
+      theme_minimal()
+```
+
+## Rearanging
+
+```{r}
+consultas <- consultas %>% 
+  select(
+    record_id,
+    n_visits, follow_up_time, weeks_since_first,
+    weight_kg, bmi, percent_weight_loss,
+    age, sex, race, death_date, first_visit,
+    baseline_weight, height_m, date_consultation, birthdate
+  )
+```
+
+## Obese
+
+```{r}
+#| label: obese-dateset
+obese <- consultas %>%
+  group_by(record_id) %>%
+  filter(
+    any(bmi >= 30, na.rm = TRUE)
+  ) %>% 
+  ungroup()
+
+
+```
+
+```{r}
+#| label: codebook-obese
+
+codebook_obese <- read_csv(here("data_output", "codebook_obese.csv"))
+
+```
+
+# Objectives
+
+Analisar as medidas de frequência, tendência central e dispersão associadas ao tratamento da obesidade, visando identificar variáveis clínicas e epidemiológicas associadas a melhor resposta ao tratamento clínico da obesidade.
+
+1.  Componente descritivo:\
+
+<!-- -->
+
+a.  Descrever o perfil epidemiológico dos indivíduos na primeira consulta médica: idade, sexo, etnia, IMC, frequência de comorbidades.
+b.  Durante o período de acompanhamento, descrever a incidência de doenças cardiovasculares, osteo-metabólicas, anemias carenciais e deficiências vitamínicas.
+c.  Descrever indicadores dos atendimentos: número de consultas e tempo de seguimento.
+d.  Descrever os diferentes tipos de tratamentos prescritos para obesidade e dislipidemia e a frequência com que cada abordagem foi utilizada.
+e.  Descrever a causa dos 95 óbitos registrados.
+f.  Descrever a porcentagem de indivíduos nos quais o peso do último atendimento foi maior do que o peso do primeiro atendimento.
+g.  A partir da segunda visita, descrever a porcentagem de atendimentos em que houve ganho de peso ou perda de peso em relação à consulta anterior.
+
+<!-- -->
+
+2.  Análises dependentes exclusivamente do tempo de seguimento:
+
+<!-- -->
+
+a.  Calcular a diferença entre as médias da porcentagem máxima de perda de peso dos indivíduos acompanhados por 12 meses ou menos e os acompanhados por mais de 12 meses, considerando como covariáveis: sexo e etnia; idade e IMC do primeiro atendimento, comorbidades, recebeu tratamento medicamentoso para obesidade durante o período (sim ou não).
+b.  Investigar a associação entre a porcentagem máxima de perda de peso e as seguintes variáveis: sexo e etnia; idade e IMC do primeiro atendimento; número total de atendimentos e tempo total de seguimento; comorbidades; recebeu tratamento medicamentoso para obesidade durante o período (sim ou não).
+c.  Descrever o momento em que cada indivíduo atingiu uma perda de peso maior ou igual a cinco porcento em relação ao primeiro atendimento.
+
+<!-- -->
+
+3.  Para os subgrupos que atingiram perda de peso maior ou igual a cinco porcento, estratificados de acordo com o tempo de acompanhamento (igual ou menor que seis meses, entre seis e 12 meses, maior que 12 meses):
+
+<!-- -->
+
+a.  Descrever o tempo de seguimento e o número da consulta em que foi feita a primeira observação de perda de peso maior ou igual a cinco porcento.
+b.  Descrever as medidas de frequência de reganho de peso após o momento representado pelo item 3. A.
+c.  Comparar as médias da porcentagem máxima de perda de peso entre os subgrupos estratificados pelo tempo de seguimento.
+
+<!-- -->
+
+4.  Para o grupo que não obteve perda de peso maior ou igual a cinco porcento em qualquer momento do acompanhamento clínico:
+
+<!-- -->
+
+a.  Descrever o tempo de seguimento e o número da consulta em que foi observado a porcentagem máxima de perda de peso.
+b.  Descrever o ganho de peso após o momento representado pelo item 4. A.
+
+<!-- -->
+
+5.  A partir da análise dos dados coletados e com o objetivo de normatizar e uniformizar o atendimento médico no ambulatório:
+
+<!-- -->
+
+a.  Desenvolver um protocolo de funcionamento para o ambulatório ODIS que contenha orientações relevantes para a equipe médica assistente com relação aos critérios de inclusão, rastreio, acompanhamento, tratamento e alta.
+b.  Desenvolver uma ficha de atendimento médico padronizada a ser adotada no ambulatório e que propicie a implementação do protocolo.
+
+Analisar as medidas de frequência, tendência central e dispersão associadas ao tratamento da obesidade, visando identificar variáveis clínicas e epidemiológicas associadas a melhor resposta ao tratamento clínico da obesidade.
+
+## Componente descritivo:
+
+### a. Perfil epidemiológico
+
+```{r}
+#| label: get_mean()
+
+get_mean <- function(x) {
+  n <- sum(!is.na(x))
+  mean_x <- mean(x, na.rm = TRUE)
+  sd_x <- sd(x, na.rm = TRUE)
+  error <- 1.96 * sd_x / sqrt(n)
+  tibble(
+    média = mean_x,
+    dp = sd_x,
+    IC95_inf = mean_x - error,
+    IC95_sup = mean_x + error
+  )
+}
+```
+
+```{r}
+# Selecionar a primeira consulta para cada paciente
+obese_first <- obese %>%
+  group_by(record_id) %>%
+  slice_min(date_consultation, with_ties = FALSE) %>%
+  ungroup()
+
+# Resumos principais
+resumo_geral <- obese_first %>%
+  summarise(
+    n = n(),
+    idade_media = mean(age, na.rm = TRUE),
+      idade_dp = sd(age, na.rm = TRUE),
+      idade_ic95_inf = idade_media - 1.96 * idade_dp / sqrt(n),
+      idade_ic95_sup = idade_media + 1.96 * idade_dp / sqrt(n),
+    bmi_media = mean(bmi, na.rm = TRUE),
+      bmi_dp = sd(bmi, na.rm = TRUE),
+      bmi_ic95_inf = bmi_media - 1.96 * bmi_dp / sqrt(n),
+      bmi_ic95_sup = bmi_media + 1.96 * bmi_dp / sqrt(n),
+    altura_media = mean(height_m, na.rm = TRUE),
+      altura_dp = sd(height_m, na.rm = TRUE),
+    peso_baseline_medio = mean(baseline_weight, na.rm = TRUE),
+      peso_baseline_dp = sd(baseline_weight, na.rm = TRUE),
+    idade_min = min(age, na.rm = TRUE),
+    idade_max = max(age, na.rm = TRUE),
+    ano_primeira = lubridate::year(min(first_visit, na.rm = TRUE)),
+    ano_ultima = lubridate::year(max(first_visit, na.rm = TRUE))
+  )
+
+# Sexo mais frequente
+sexo_freq <- obese_first %>%
+  count(sex) %>%
+  mutate(percent = 100 * n / sum(n)) %>%
+  arrange(desc(n)) %>%
+  slice(1)
+
+# Raça mais frequente
+raca_freq <- obese_first %>%
+  count(race) %>%
+  mutate(percent = 100 * n / sum(n)) %>%
+  arrange(desc(n)) %>%
+  slice(1)
+
+# Dados de seguimento
+seguimento_resumo <- obese %>%
+  summarise(
+    n_visits_media = mean(n_visits, na.rm = TRUE),
+    follow_up_media = mean(as.numeric(follow_up_time), na.rm = TRUE),
+    follow_up_dp = sd(as.numeric(follow_up_time), na.rm = TRUE)
+  ) %>%
+  mutate(
+    follow_up_media_meses = follow_up_media / 4.345,
+    follow_up_dp_meses = follow_up_dp / 4.345
+  )
+
+# Óbitos
+n_obitos <- obese_first %>% filter(!is.na(death_date)) %>% nrow()
+ultima_data_obito <- max(obese$death_date, na.rm = TRUE)
+```
+
+Na primeira consulta médica, foram avaliados `r resumo_geral$n` indivíduos.\
+A idade média foi de `r round(resumo_geral$idade_media, 1)` anos (DP = `r round(resumo_geral$idade_dp, 1)`), com IC95% entre `r round(resumo_geral$idade_ic95_inf, 1)` e `r round(resumo_geral$idade_ic95_sup, 1)`.
+
+O IMC médio foi de `r round(resumo_geral$bmi_media, 1)` kg/m² (DP = `r round(resumo_geral$bmi_dp, 1)`), com IC95% entre `r round(resumo_geral$bmi_ic95_inf, 1)` e `r round(resumo_geral$bmi_ic95_sup, 1)`.
+
+A maioria dos participantes era do sexo `r sexo_freq$sex`, representando `r round(sexo_freq$percent, 1)`% da amostra.
+
+Quanto à raça, a maioria se autodeclarou `r raca_freq$race` (`r round(raca_freq$percent, 1)`%).
+
+Cada participante teve, em média, `r round(seguimento_resumo$n_visits_media, 1)` consultas, com tempo médio de seguimento de `r round(seguimento_resumo$follow_up_media, 1)` semanas (DP = `r round(seguimento_resumo$follow_up_dp, 1)`), o que corresponde a aproximadamente `r round(seguimento_resumo$follow_up_media_meses, 1)` meses (DP = `r round(seguimento_resumo$follow_up_dp_meses, 1)`).
+
+A altura média na consulta inicial foi de `r round(resumo_geral$altura_media, 2)` m (DP = `r round(resumo_geral$altura_dp, 2)`).\
+O peso médio foi de `r round(resumo_geral$peso_baseline_medio, 1)` kg (DP = `r round(resumo_geral$peso_baseline_dp, 1)`).
+
+Durante o acompanhamento, ocorreram `r n_obitos` óbitos, sendo o último registrado em `r ultima_data_obito`.
+
+A idade dos participantes variou entre `r resumo_geral$idade_min` e `r resumo_geral$idade_max` anos.\
+As consultas iniciais ocorreram entre os anos de `r resumo_geral$ano_primeira` e `r resumo_geral$ano_ultima`.
+
+A porcentagem de perda de peso no momento inicial foi igual a zero para todos os participantes.\
+A variável `weeks_since_first` é zero por definição neste subconjunto.
+
+### b. Durante o período de acompanhamento, descrever a incidência de doenças cardiovasculares, osteo-metabólicas, anemias carenciais e deficiências vitamínicas.
+
+### c. Descrever indicadores dos atendimentos: número de consultas e tempo de seguimento.
+
+### d. Descrever os diferentes tipos de tratamentos prescritos para obesidade e dislipidemia e a frequência com que cada abordagem foi utilizada.
+
+### e. Descrever a causa dos 95 óbitos registrados.
+
+### f. Descrever a porcentagem de indivíduos nos quais o peso do último atendimento foi maior do que o peso do primeiro atendimento.
+
+```{r}
+# Obter peso do primeiro e do último atendimento
+# Filtrar apenas quem tem duas ou mais visitas
+peso_comparacao <- obese %>%
+  filter(n_visits >= 2) %>%
+  group_by(record_id) %>%
+  slice_min(date_consultation, with_ties = FALSE) %>%
+  select(record_id, peso_primeiro = weight_kg) %>%
+  left_join(
+    obese %>%
+      filter(n_visits >= 2) %>%
+      group_by(record_id) %>%
+      slice_max(date_consultation, with_ties = FALSE) %>%
+      select(record_id, peso_ultimo = weight_kg),
+    by = "record_id"
+  ) %>%
+  mutate(ganhou_peso = peso_ultimo > peso_primeiro,
+         percent_ganho = 
+           ifelse(peso_ultimo > peso_primeiro,
+                  100 * ((peso_ultimo - peso_primeiro) / peso_primeiro), 
+                  NA),
+         percent_perda = 
+           ifelse(peso_ultimo < peso_primeiro,
+                  100 * ((peso_primeiro - peso_ultimo) / peso_primeiro), 
+                  NA)
+           ) %>% ungroup()
+
+```
+
+Entre os `r nrow(peso_comparacao)` indivíduos com pelo menos duas consultas registradas, `r sum(peso_comparacao$ganhou_peso)` (`r round((sum(peso_comparacao$ganhou_peso)/nrow(peso_comparacao))*100, 1)`%) apresentaram aumento de peso no último atendimento em comparação ao primeiro. Nestes indivíduos, a média de ganho de peso foi de `r round(mean(peso_comparacao$percent_ganho, na.rm = TRUE), 1)`% (DP = `r round(sd(peso_comparacao$percent_ganho, na.rm = TRUE), 1)`%). Por sua vez, `r sum(!peso_comparacao$ganhou_peso)` (`r round((sum(!peso_comparacao$ganhou_peso)/nrow(peso_comparacao))*100, 1)`%) apresentaram perda de peso no último atendimento em comparação ao primeiro, com uma média de `r round(mean(peso_comparacao$percent_perda, na.rm = TRUE), 1)`% (DP = `r round(sd(peso_comparacao$percent_perda, na.rm = TRUE), 1)`%).
+
+### g. A partir da segunda visita, descrever a porcentagem de atendimentos em que houve ganho de peso ou perda de peso em relação à consulta anterior.
+
+<!-- -->
+
+2.  Análises dependentes exclusivamente do tempo de seguimento:
+
+<!-- -->
+
+a.  Calcular a diferença entre as médias da porcentagem máxima de perda de peso dos indivíduos acompanhados por 12 meses ou menos e os acompanhados por mais de 12 meses, considerando como covariáveis: sexo e etnia; idade e IMC do primeiro atendimento, comorbidades, recebeu tratamento medicamentoso para obesidade durante o período (sim ou não).
+b.  Investigar a associação entre a porcentagem máxima de perda de peso e as seguintes variáveis: sexo e etnia; idade e IMC do primeiro atendimento; número total de atendimentos e tempo total de seguimento; comorbidades; recebeu tratamento medicamentoso para obesidade durante o período (sim ou não).
+c.  Descrever o momento em que cada indivíduo atingiu uma perda de peso maior ou igual a cinco porcento em relação ao primeiro atendimento.
+
+<!-- -->
+
+3.  Para os subgrupos que atingiram perda de peso maior ou igual a cinco porcento, estratificados de acordo com o tempo de acompanhamento (igual ou menor que seis meses, entre seis e 12 meses, maior que 12 meses):
+
+<!-- -->
+
+a.  Descrever o tempo de seguimento e o número da consulta em que foi feita a primeira observação de perda de peso maior ou igual a cinco porcento.
+b.  Descrever as medidas de frequência de reganho de peso após o momento representado pelo item 3. A.
+c.  Comparar as médias da porcentagem máxima de perda de peso entre os subgrupos estratificados pelo tempo de seguimento.
+
+<!-- -->
+
+4.  Para o grupo que não obteve perda de peso maior ou igual a cinco porcento em qualquer momento do acompanhamento clínico:
+
+<!-- -->
+
+a.  Descrever o tempo de seguimento e o número da consulta em que foi observado a porcentagem máxima de perda de peso.
+b.  Descrever o ganho de peso após o momento representado pelo item 4. A.
+
+<!-- -->
+
+5.  A partir da análise dos dados coletados e com o objetivo de normatizar e uniformizar o atendimento médico no ambulatório:
+
+<!-- -->
+
+a.  Desenvolver um protocolo de funcionamento para o ambulatório ODIS que contenha orientações relevantes para a equipe médica assistente com relação aos critérios de inclusão, rastreio, acompanhamento, tratamento e alta.
+b.  Desenvolver uma ficha de atendimento médico padronizada a ser adotada no ambulatório e que propicie a implementação do protocolo.

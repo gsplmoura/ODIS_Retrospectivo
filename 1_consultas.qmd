@@ -1,0 +1,585 @@
+---
+title: "ODIS Retrospectivo Data Wrangling"
+author: "Gustavo Santos Paiva Laender Moura"
+date: "`r Sys.Date()`"
+format:
+  html:
+    toc: true
+    toc-depth: 5
+    toc-float:
+      collapsed: false
+      smooth-scroll: true
+    number-sections: false
+  pdf:
+    toc: true
+    toc-depth: 5
+    number-sections: true
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+rm(list = ls())
+graphics.off()
+cat("\014")  # Clear any pending RStudio sessions or temporary files
+
+# Set global chunk options
+knitr::opts_chunk$set(
+  #echo = TRUE,        # Show code in output
+  #warning = FALSE,    # Hide warnings
+  #message = FALSE,    # Hide messages
+  fig.align = 'center', # Center figures
+  fig.width = 7,      # Default figure width (in inches)
+  fig.height = 5,     # Default figure height
+  out.width = "100%"  # Full-width figures
+)
+```
+
+```{r}
+#| label: load-packages
+#| echo: false
+
+library(tidyverse)
+library(readxl)
+library(janitor)
+library(here)
+library(skimr)
+library(lubridate)
+
+```
+
+# Consultas
+
+```{r}
+#| label: consultas
+
+codebook_consultas <- read_csv(here("data", "codebook_consultas.csv"))
+
+consultas <- read_delim(here("data","Levantamento_GLPI_58686_Sol_123_2023_Pacientes.csv"), delim = ";") %>% 
+  janitor::clean_names() %>%
+  rename(record_id = registro) %>% 
+  mutate(
+    birthdate = dmy(dta_nascimento),
+    race = as.factor(raca_etnia),
+    sex = as.factor(idf_sexo),
+    death_date = dmy(dta_obito),
+    date_consultation = dmy(dta_hor_consulta),
+    age = as.numeric(# Converts duration object to numeric value
+      lubridate::interval(birthdate, date_consultation) / years(1)) # dyears(1) from lubridate: represents the duration of one year (365.25 days), ensuring leap years are accounted for.
+  ) %>%
+  select(
+    record_id, birthdate, race, sex, death_date, date_consultation, age
+  )
+```
+
+O conjunto de dados `consultas` contém 5.212 observações, representando múltiplos registros de consultas médicas realizadas para um total de 872 pacientes. As consultas abrangeram o período de 19 de janeiro de 2016 a 24 de outubro de 2023, com um total de 367 datas distintas de atendimento. O conjunto de dados `consultas` contém as seguintes variáveis:
+
+- `record_id` (caractere):identificador único, com todos os valores tendo comprimento fixo de 8 caracteres e sem dados ausentes. 
+- `birthdate` (data), 
+- `race` (fator) 5 categorias:“Branco”, “Pardo”, “Preto”
+- `sex` (fator) possui duas categorias, com 553 mulheres (63,4%) e 319 homens (36,6%).
+- `death_date`, que apresenta *785 valores ausentes (89,9%)*, indicando que a maioria dos participantes está viva. 
+- `date_consultation` (data)
+
+Em adição, uma nova variável que representa a idade do paciente na data da consulta foi criada:
+
+- `age` (inteiro)
+
+```{r}
+#| label: índice de consultas
+
+consultas <- consultas %>%
+  arrange(record_id, date_consultation) %>%
+  group_by(record_id) %>%
+  mutate(
+    index = row_number(),
+    baseline_date = min(date_consultation, na.rm = TRUE),
+    week_consultation = as.integer(difftime(date_consultation, baseline_date, units = "weeks"))
+  ) %>%
+  ungroup() %>%
+  select(-baseline_date)  # remove se quiser ocultar a data basal
+```
+
+Em seguida, duas novas foram criadas:
+
+- `index` (numérica): a variável index foi criada dentro de cada grupo de paciente (record_id) para numerar cronologicamente as consultas de um mesmo indivíduo. É um contador sequencial de consultas dentro de cada paciente. Permite identificar a ordem temporal das consultas (primeira, segunda, terceira, etc.), independentemente da data exata.	É útil para análises longitudinais, por exemplo, quando você quer comparar “consulta 1 vs. consulta 2” ou analisar trajetórias de evolução clínica.
+- `week_consultation`: indica quanto tempo (em semanas) se passou desde a primeira consulta do paciente.
+	•	Ele não conta o número da consulta (isso é o papel da variável index), mas sim a distância temporal em relação ao início do acompanhamento.
+
+O cógido a seguir mantém apenas uma linha para cada combinação única de record_id e date_consultation, preservando todas as demais variáveis da primeira ocorrência (.keep_all = TRUE). Assim, os 10 registros duplicados são eliminados.
+
+```{r}
+#| label: remove duplicated consultations
+
+consultas %>% 
+  count(record_id, date_consultation) %>% 
+  filter(n > 1)
+
+# Conta quantas vezes cada par record_id + date_consultation aparece.
+# O filter(n > 1) mostra apenas os pares duplicados (pacientes com mais de uma consulta registrada na mesma data).
+# Resultado inicial: foram encontradas 10 linhas duplicadas.
+
+#> `consultas` has 10 records with duplicated record_id + date_consultation pairs, as if the patient had undergone two evaluations on the same date. So, this has to be corrected and duplicated pairs removed.
+
+consultas <- consultas %>% 
+  distinct(record_id, date_consultation, .keep_all = TRUE)
+
+# distinct() elimina registros duplicados com base em record_id + date_consultation.
+# O argumento .keep_all = TRUE mantém todas as demais colunas da linha.
+# Assim, cada paciente passa a ter no máximo uma consulta por data.
+
+# Let's recheck for duplicated pairs:
+
+consultas %>% 
+  count(record_id, date_consultation) %>% 
+  filter(n > 1)
+
+# Repete a checagem inicial para garantir que não restaram pares duplicados.
+# Se tudo deu certo, esse comando retorna zero linhas.
+```
+
+O código identifica pacientes que tinham mais de uma consulta registrada na mesma data, remove essas duplicatas e depois confirma que o problema foi resolvido.
+
+
+# Altura e peso
+
+```{r}
+#| label: anthropometric, all patients
+
+monitorizacao <- read_excel(here("data","Levantamento_GLPI_58686_Sol_123_2023_Monitorizacao_Isabela.xlsx"), sheet = 1) %>% 
+  select(
+    record_id, type, date, value
+  )
+
+# Lê a planilha de monitorização.
+# Mantém apenas as colunas relevantes: identificador do paciente, tipo da medida, data e valor.
+
+weight <- monitorizacao %>% 
+  filter(
+    type == "weight_kg"
+  ) %>% 
+  select(
+    record_id, date, value
+  ) %>% 
+  rename(
+    date_weight = date,
+    weight_kg = value
+  )
+
+# Filtra apenas registros cujo tipo é peso em kg.
+# Seleciona as colunas e renomeia para ficar mais claro (date_weight, weight_kg).
+
+alturas_faltantes <- read_excel(here("data","alturas_faltantes.xlsx")) %>% janitor::clean_names() %>% 
+  filter(
+    !is.na(altura_metros_ponto_como_separador_decimal)
+  ) %>% 
+  select(
+    record_id = registro,
+    height_m = altura_metros_ponto_como_separador_decimal) %>% 
+  mutate(
+    height_m = as.numeric(height_m)
+  )
+
+# Lê um arquivo separado só com alturas de pacientes que estavam faltando no banco original.
+# Padroniza os nomes das variáveis.
+# Filtra apenas casos em que a altura foi informada.
+# Renomeia as colunas para record_id e height_m.
+# Converte altura para formato numérico (em metros).
+
+alturas_faltantes_records <- alturas_faltantes %>% pull(record_id)
+
+# Cria um vetor com os record_id dos pacientes que tinham altura faltante.
+
+height <- monitorizacao %>% 
+  filter(
+    type == "height_m"
+    ) %>% 
+  select(
+    record_id, date, value
+  ) %>% 
+  rename(
+    height_m = value,
+    date_height = date)
+
+# Criação do dataset de altura (height):
+# Filtra apenas registros cujo tipo é altura em metros.
+# Seleciona as colunas e renomeia para date_height e height_m.
+
+height_records <- height %>% pull(record_id)
+
+# Cria um vetor com os record_id dos pacientes que já tinham altura no banco original.
+
+```
+
+Esse código é responsável por importar, organizar e separar os dados antropométricos (peso e altura) de todos os pacientes. O código importa os dados de monitorização, separa peso e altura em datasets específicos, e complementa as alturas faltantes a partir de um arquivo auxiliar.
+
+### Weight
+
+#### Removing duplicated values
+
+```{r}
+#| label: remove duplicated weights 
+
+weight %>% 
+  count(record_id, date_weight) %>% 
+  filter(n > 1)
+
+# Conta quantas vezes cada paciente (record_id) aparece com a mesma data de pesagem (date_weight).
+# Mostra apenas os casos em que existem duplicatas.
+# Resultado: foram encontrados 321 registros duplicados.
+
+weight %>% 
+  group_by(record_id, date_weight) %>% 
+  filter(n() > 1) %>% 
+  summarise(
+    n = n(),
+    min = min(weight_kg),
+    max = max(weight_kg),
+    sd = sd(weight_kg)
+  ) %>% 
+  arrange(desc(sd)) %>% 
+  ungroup()
+
+# Investigação das duplicatas:
+# Agrupa pacientes e datas com múltiplas medidas.
+# Resume a variação no mesmo dia: número de medidas, mínimo, máximo e desvio-padrão.
+# Descobre-se que cerca de 20 observações têm variações irreais de peso (por exemplo, diferenças de vários quilos no mesmo dia).
+
+weight <- weight %>% 
+  group_by(record_id, date_weight) %>%          # define the pair
+  slice_max(weight_kg, n = 1, with_ties = FALSE) %>%  # keep the max
+  ungroup()
+
+# Escolha de qual valor manter:
+# A decisão foi manter apenas o maior peso registrado no mesmo dia para cada paciente.
+# slice_max(..., with_ties = FALSE) garante que, em caso de empate, só um registro será retido.
+
+weight %>% 
+  count(record_id, date_weight) %>% 
+  filter(n > 1)
+
+weight %>% filter(is.na(record_id))
+
+weight %>% filter(is.na(date_weight))
+
+# Verificação final
+# Reconta para confirmar que não restaram duplicatas.
+# Checa se existem valores faltantes em record_id ou date_weight (não deve haver nenhum).
+```
+
+O código identifica e remove duplicatas de peso no mesmo dia, mantendo apenas o maior valor por paciente e garantindo que não restem inconsistências.
+
+#### Left join (opção 1)
+
+```{r}
+#| label: left-join weight by exact match 
+consultas <- left_join(
+  x = consultas, 
+  y = weight,
+  by = join_by(record_id, date_consultation == date_weight)
+  )
+
+# Faz um left join entre as consultas e as pesagens.
+# Só faz o pareamento quando houver coincidência exata de record_id e da data (date_consultation == date_weight).
+# Quando não encontra pesagem na mesma data da consulta, weight_kg fica NA.
+
+consultas %>% filter(is.na(weight_kg)) %>% nrow()
+
+# Conta o número de NAs
+```
+
+Nesta primeira opção, é realizado um left join entre as consultas e pesagens. No entanto, o pareamento é feito com match perfeito entre as datas da consulta e de aferição do peso. No entanto, uma grande proporção (1214/5202 ou 23.3%) de consultas sem weight_kg após o join indica que, em muitos atendimentos, não houve pesagem no mesmo dia. 
+
+Uma nova variável foi adicionada:
+
+- `weight`: peso em kg aferido na data da consulta.
+
+#### Left join (opção 2)
+
+Essa é uma tentativa de reduzir o número de NAs mantendo rigor temporal. Consideramos uma alternativa do “peso mais próximo por paciente” dentro de uma janela (ex.: ±7 dias). Essa estratégia busca o peso mais próximo da consulta dentro de uma janela de ±7 dias, com as seguintes regras de desempate:
+
+- Prioriza a menor distância em dias (0 é o ideal).
+- Em caso de empate, prioriza medidas no mesmo dia ou anteriores à consulta.
+- Persistindo empate, fica com a data de peso mais recente.
+
+Notas rápidas:
+
+- `janela`: mude para 3, 14, 30… conforme a política que você considerar clinicamente aceitável.
+- `dist_days`: foi mantido no dataframe final; isso ajuda a auditar quão “longe” estava a medida de peso em relação à consulta.
+
+```{r}
+# Defina a janela (em dias) — ajuste conforme necessário
+janela <- 15
+
+# 1) Gera candidatos de pareamento dentro da janela ±7 dias
+candidatos_peso <- consultas %>%
+  select(record_id, date_consultation) %>%
+  distinct() %>%
+  # junta todos os pesos do mesmo paciente
+  left_join(weight, by = "record_id", relationship = "many-to-many") %>%
+  # mantém apenas pesos dentro da janela
+  filter(
+    date_weight >= (date_consultation - days(janela)),
+    date_weight <= (date_consultation + days(janela))
+  ) %>%
+  # métrica de "proximidade temporal"
+  mutate(
+    dist_days = (abs(as.numeric(date_weight - date_consultation)))/86400,      # distância absoluta em dias
+    prefer_before = if_else(date_weight <= date_consultation, 0L, 1L)  # empata: peso antes da consulta = 0; peso depois da consulta = 1
+  ) %>%
+  # resolve empates por grupo (paciente + data de consulta)
+  group_by(record_id, date_consultation) %>%
+  arrange(dist_days, prefer_before, desc(date_weight), .by_group = TRUE) %>% 
+  slice(1) %>%
+  ungroup() %>%
+  select(record_id, date_consultation, date_weight, weight_kg, dist_days)
+```
+
+Esse código realiza o pareamento entre consultas médicas e medidas de peso, permitindo que cada consulta seja associada ao peso mais próximo registrado dentro de uma janela de sete dias. Para isso, ele seleciona as combinações únicas de paciente e data de consulta, junta todas as medidas de peso correspondentes ao mesmo paciente e mantém apenas aquelas que ocorreram no intervalo de ±7 dias em relação à data da consulta. Em seguida, calcula a distância em dias entre a consulta e a pesagem e define uma regra de desempate que dá preferência a medidas realizadas no mesmo dia ou em dias anteriores. Por fim, para cada paciente e cada consulta, escolhe apenas o peso mais adequado segundo esses critérios, gerando uma tabela final com a data da consulta, a data do peso pareado, o valor do peso e a distância em dias entre os dois eventos.
+
+```{r}
+# 2) Faz o join final com consultas, trazendo o peso "mais próximo" dentro da janela
+consultas_nearest <- consultas %>%
+  # remove eventual weight_kg anterior, se já existia do join exato
+  select(-any_of(c("weight_kg", "date_weight"))) %>%
+  left_join(candidatos_peso, by = c("record_id", "date_consultation"))
+```
+
+Faz o join final com consultas, trazendo o peso "mais próximo" dentro da janela
+
+```{r}
+# 3) Checagens de completude
+n_total <- nrow(consultas_nearest)
+n_na    <- consultas_nearest %>% filter(is.na(weight_kg)) %>% nrow()
+prop_na <- n_na / n_total
+
+tibble::tibble(
+  total_consultas = n_total,
+  consultas_sem_peso_na_janela = n_na,
+  prop_sem_peso = scales::percent(prop_na, accuracy = 0.1)
+)
+```
+
+A tabela abaixo mostra o número de consultas sem peso com diferentes janelas.
+
+Testes de diferentes janelas para o total de 5202 consultas:
+
+| janela (em dias) | nº de consultas sem peso na janela | proporção (%) |
+|------------------|------------------------------------|---------------|
+|        0         |                  1214              |   23.3        |
+|       +- 7       |                  1134              |   21.8        |
+|       +- 10      |                  1109              |   21.3        |
+|       +- 15      |                  1060              |   20.4        |
+|       +- 30      |                  941               |   18.1        |
+|       +- 60      |                  779               |   15.0        |
+
+Novas variáveis:
+
+- `date_weight`: Data da medida de peso pareada à consulta
+- `weight_kg`: Peso corporal em quilogramas
+- `dist_days`: Distância em dias entre a data da consulta e a medida de peso pareada
+
+### Heights
+
+#### Data Exploration
+
+Let's start by checking the variation in heights to determine if it would be ok to use a patient's mean or median height. This would avoid having to to fuzzy joins or left joins for each date + height pairs. But before we do that, let's check if there are records with multiple measurements on the same day.
+
+```{r}
+height %>% 
+  count(record_id, date_height) %>% 
+  filter(n > 1) %>% 
+  arrange(desc(n))
+```
+
+And the answer is yes. There are 68 records with 2 or 3 height measurements on the same day. Let's check the within-day variation.
+
+```{r}
+within_day_heights <-  height %>% 
+  count(record_id, date_height) %>% 
+  filter(n > 1) %>% 
+  arrange(desc(n)) %>% 
+  pull(record_id)
+
+height %>% 
+  filter(record_id %in% within_day_heights) %>% 
+  group_by(record_id, date_height) %>% 
+  summarise(
+    n = n(),
+    min = min(height_m),
+    max = max(height_m),
+    sd = sd(height_m)
+  ) %>% 
+  arrange(desc(sd)) %>% 
+  ungroup() %>% 
+  filter(n > 1)
+```
+I guess it would be ok to use the mean in this case. 
+
+Let's check overall.
+
+```{r}
+heights_sd <- height %>% 
+  group_by(record_id) %>% 
+  summarise(
+    n = n(),
+    min = min(height_m),
+    max = max(height_m),
+    sd = sd(height_m)
+  ) %>% 
+  arrange(desc(sd)) %>% 
+  ungroup()
+
+heights_sd
+```
+
+Let's check patient's ages at the beginning of follow-up:
+
+```{r}
+heights_sd <- left_join(
+  x = heights_sd,
+  y = consultas %>% 
+    filter(index == 1) %>% 
+    select(record_id, age),
+  by = "record_id"
+)
+
+heights_sd
+```
+
+The patients with the most concerning height variations were not adolescents during the beginning of the follow-up. So, we assume the height variations are not due to growth, but errors in data collection. Since they have multiple measurements, and to avoid severe errors in magnitude if we were to use the mean, we'll use the `median` height value for each patient. 
+
+#### Median
+
+```{r}
+patient_heights <- height %>% 
+  group_by(record_id) %>% 
+  summarise(
+    height_m = median(height_m)
+  ) %>% 
+  ungroup()
+
+# Agrupa os dados de altura (height) por paciente (record_id).
+# Calcula a mediana das medidas de altura de cada paciente (median(height_m)).
+# A mediana é escolhida para reduzir o impacto de valores atípicos (ex.: erros de digitação ou medidas discrepantes).
+# Cria uma tabela com um único valor de altura por paciente.
+```
+
+Cria uma tabela com um único valor de altura por paciente, que representa a mediana de todas as medidas de altura registradas para cada paciente. A mediana é escolhida para reduzir o impacto de valores atípicos (ex.: erros de digitação ou medidas discrepantes).
+
+```{r}
+patient_heights <- bind_rows(patient_heights, alturas_faltantes)
+```
+
+Aqui a altura dos pacientes que não tinham nenhuma medida de altura registrada foi adicionada ao dataset `patient_heights`, e que foram coletadas diretamente do prontuário eletrônico (EMR).
+
+```{r}
+consultas <- left_join(
+  x = consultas,
+  y = patient_heights,
+  by = "record_id"
+)
+
+# para o dataframe `consultas`
+
+consultas_nearest <- left_join(
+  x = consultas_nearest,
+  y = patient_heights,
+  by = "record_id"
+)
+
+# Para o dataframe `consultas_nearest`
+```
+
+Finalmente, o dataset `consultas` foi atualizado com a variável `height_m`, que contém a mediana da altura de cada paciente.
+
+- `height_m`: altura do paciente em metros, calculada como a mediana de todas as medidas de altura registradas para cada paciente.
+
+### BMI
+
+```{r}
+consultas <- consultas %>% 
+  mutate(
+    bmi = (weight_kg / (height_m * height_m))
+  )
+
+consultas_nearest <- consultas_nearest %>%
+  mutate(
+    bmi = (weight_kg / (height_m * height_m))
+  )
+```
+
+Adidionada uma nova variável, o índice de massa corporal (IMC).
+
+- `bmi`: índice de massa corporal, calculado como o peso em quilogramas dividido pelo quadrado da altura em metros.
+
+## Perda peso percentual
+
+A partir daqui, vou trabalhar apenas com o dataframe `consultas_nearest`, que contém as medidas de peso mais próximas das consultas, e a altura mediana de cada paciente. Caso no futuro optemos por usar pesos com as datas exatas das consultas, basta filtrar o dataframe para manter apenas as linhas onde `date_weight` é igual a `date_consultation`.
+
+```{r}
+#| label: percent weight loss
+
+## 1) Tabela de basal: data basal e peso basal robusto
+baseline_tbl <- consultas_nearest %>%
+  arrange(record_id, date_consultation) %>%        # garante ordem temporal dentro do paciente
+  group_by(record_id) %>%
+  mutate(is_earliest = date_consultation == first(date_consultation)) %>%
+  summarise(
+    baseline_date = first(date_consultation),
+    # Regra:
+    # a) tenta usar o peso na(s) linha(s) da menor data (primeira consulta);
+    # b) se todos forem NA nessa data, usa o primeiro peso não-NA mais antigo do paciente.
+    baseline_weight = {
+      w_on_earliest <- weight_kg[is_earliest]
+      if (any(!is.na(w_on_earliest))) {
+        w_on_earliest[which(!is.na(w_on_earliest))[1]]
+      } else {
+        w_non_na <- weight_kg[!is.na(weight_kg)]
+        if (length(w_non_na) > 0) w_non_na[1] else NA_real_
+      }
+    },
+    .groups = "drop"
+  )
+
+## 2) Junta de volta e calcula a perda percentual
+consultas_nearest <- consultas_nearest %>%
+  left_join(baseline_tbl, by = "record_id") %>%
+  mutate(
+    # NA na consulta basal (primeira data) OU se não há peso basal definido
+    percent_weight_loss = dplyr::case_when(
+      date_consultation == baseline_date ~ NA_real_,
+      is.na(baseline_weight)            ~ NA_real_,
+      TRUE ~ 100 * (baseline_weight - weight_kg) / baseline_weight
+    )
+  )
+```
+
+O código constrói uma tabela do peso basal robusta por paciente e, em seguida, calcula a perda percentual de peso ao longo do acompanhamento. Primeiro, ele ordena as consultas por `record_id` e `date_consultation`, identifica a primeira data de consulta de cada paciente e tenta definir o peso basal usando o(s) peso(s) disponível(is) na data basal. Se todos os pesos nessa data estiverem ausentes (NA), ele busca o primeiro peso não-NA mais antigo do paciente. A tabela resultante (`baseline_tbl`) contém, para cada `record_id`, a `baseline_date` e a `baseline_weight`. Em seguida, essa informação é unida ao `consultas_nearest` e calcula-se `percent_weight_loss` com a regra:  
+- NA na consulta basal (mesma data da `baseline_date`) e quando não há `baseline_weight`;  
+- caso contrário, `percent_weight_loss = 100  (baseline_weight - weight_kg) / baseline_weight`, de modo que valores positivos indiquem perda de peso (peso atual menor que o basal) e negativos indiquem ganho.
+
+Novas variáveis:
+
+- `baseline_date` (date): data da primeira consulta do paciente, usada como referência temporal para o cálculo de perda de peso.  
+- `baseline_weight` (numeric): peso basal do paciente, definido prioritariamente pelo peso medido na `baseline_date`; se ausente, utiliza-se o primeiro peso não-NA mais antigo disponível.  
+- `percent_weight_loss` (numeric, %): perda percentual de peso em relação ao basal; é NA na consulta basal e quando `baseline_weight` está ausente; positiva para perda, negativa para ganho.
+
+# Saving the data
+
+```{r}
+#| label: save-data
+
+write_rds(consultas_nearest, here("data_output","consultas_nearest.rds"))
+
+rm(list = setdiff(ls(), c("consultas_nearest", "codebook_obese")))
+```
+
+```{r}
+#| label: session-info
+
+sessionInfo()
+```
+
+
