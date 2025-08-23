@@ -14,3 +14,13 @@ here
 skimr
 gt
 knitr
+rlang
+Matrix
+lme4
+broom.mixed
+emmeans
+broom
+survival
+ggpubr
+survminer
+scales
