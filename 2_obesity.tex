@@ -209,7 +209,7 @@
 \makeatother
 \subtitle{Análise dos dados dos pacientes com obesidade}
 \author{Gustavo Santos Paiva Laender Moura}
-\date{2025-08-23}
+\date{2025-08-24}
 
 \begin{document}
 \maketitle
@@ -221,19 +221,56 @@
 \tableofcontents
 }
 
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{rm}\NormalTok{(}\AttributeTok{list =} \FunctionTok{ls}\NormalTok{())}
+\FunctionTok{graphics.off}\NormalTok{()}
+\FunctionTok{cat}\NormalTok{(}\StringTok{"}\SpecialCharTok{\textbackslash{}014}\StringTok{"}\NormalTok{)  }\CommentTok{\# Clear any pending RStudio sessions or temporary files}
+\end{Highlighting}
+\end{Shaded}
+
 \newpage{}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Set global chunk options}
+\NormalTok{knitr}\SpecialCharTok{::}\NormalTok{opts\_chunk}\SpecialCharTok{$}\FunctionTok{set}\NormalTok{(}
+  \CommentTok{\#echo = TRUE,        \# Show code in output}
+  \CommentTok{\#warning = FALSE,    \# Hide warnings}
+  \CommentTok{\#message = FALSE,    \# Hide messages}
+  \AttributeTok{fig.align =} \StringTok{\textquotesingle{}center\textquotesingle{}}\NormalTok{, }\CommentTok{\# Center figures}
+  \AttributeTok{fig.width =} \DecValTok{7}\NormalTok{,      }\CommentTok{\# Default figure width (in inches)}
+  \AttributeTok{fig.height =} \DecValTok{5}\NormalTok{,     }\CommentTok{\# Default figure height}
+  \AttributeTok{out.width =} \StringTok{"100\%"}  \CommentTok{\# Full{-}width figures}
+\NormalTok{)}
+
+\FunctionTok{source}\NormalTok{(}\StringTok{"helper\_functions.R"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(tidyverse)}
+\FunctionTok{library}\NormalTok{(readxl)}
+\FunctionTok{library}\NormalTok{(janitor)}
+\FunctionTok{library}\NormalTok{(here)}
+\FunctionTok{library}\NormalTok{(skimr)}
+\FunctionTok{library}\NormalTok{(lubridate)}
+\FunctionTok{library}\NormalTok{(gt)}
+\FunctionTok{library}\NormalTok{(knitr)}
+\FunctionTok{library}\NormalTok{(stringr)}
+\FunctionTok{library}\NormalTok{(purrr)}
+\end{Highlighting}
+\end{Shaded}
 
 \section{Consultas}\label{consultas}
 
-\begin{verbatim}
-Rows: 17 Columns: 4
--- Column specification --------------------------------------------------------
-Delimiter: ","
-chr (4): variable, type, levels, description
-
-i Use `spec()` to retrieve the full column specification for this data.
-i Specify the column types or set `show_col_types = FALSE` to quiet this message.
-\end{verbatim}
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{consultas }\OtherTok{\textless{}{-}} \FunctionTok{read\_rds}\NormalTok{(}\AttributeTok{file =} \FunctionTok{here}\NormalTok{(}\StringTok{"data\_output"}\NormalTok{, }\StringTok{"consultas\_nearest.rds"}\NormalTok{))}
+\NormalTok{codebook\_consultas }\OtherTok{\textless{}{-}} \FunctionTok{read\_csv}\NormalTok{(}\FunctionTok{here}\NormalTok{(}\StringTok{"data"}\NormalTok{, }\StringTok{"codebook\_consultas.csv"}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
 
 O banco de dados \texttt{consultas} reúne 5.202 observações referentes a
 consultas médicas de 872 pacientes distintos, identificados de forma
@@ -268,6 +305,17 @@ clínica dos indivíduos.
 \section{Filtrando a amostra}\label{filtrando-a-amostra}
 
 \subsection{Por IMC}\label{por-imc}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{consultas\_bmi }\OtherTok{\textless{}{-}}\NormalTok{ consultas }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(record\_id) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{filter}\NormalTok{(}
+    \FunctionTok{any}\NormalTok{(bmi }\SpecialCharTok{\textgreater{}=} \DecValTok{30}\NormalTok{, }\AttributeTok{na.rm =} \ConstantTok{TRUE}\NormalTok{)}
+\NormalTok{  ) }\SpecialCharTok{\%\textgreater{}\%} 
+  \FunctionTok{ungroup}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
 
 Esse código cria um novo dataframe chamado \texttt{consultas\_bmi} a
 partir do dataframe \texttt{consultas}, selecionando apenas os pacientes
@@ -1349,16 +1397,16 @@ casos de seguimento prolongado foram menos comuns.
 \end{figure}%
 
 \begin{quote}
-Legenda O gráfico ECDF mostra no eixo X o número de consultas por
-paciente e no eixo Y a proporção acumulada de pacientes que atingiram
-até aquele valor. Observa-se que cerca de \textbf{30\% dos pacientes
-tiveram até 3 consultas}, aproximadamente \textbf{50\% até 5 consultas
-(mediana)}, e \textbf{75\% até 9 consultas (percentil 75)}. A curva se
-aproxima de 100\% em torno de 26 consultas, que é o valor máximo
-observado. Esse tipo de gráfico facilita a visualização dos
-\textbf{percentis}: basta projetar horizontalmente a linha desejada
-(25\%, 50\%, 75\%, etc.) até interceptar a curva e ler no eixo X o valor
-correspondente de consultas.
+Legenda:\\
+O gráfico ECDF mostra no eixo X o número de consultas por paciente e no
+eixo Y a proporção acumulada de pacientes que atingiram até aquele
+valor. Observa-se que cerca de \textbf{30\% dos pacientes tiveram até 3
+consultas}, aproximadamente \textbf{50\% até 5 consultas (mediana)}, e
+\textbf{75\% até 9 consultas (percentil 75)}. A curva se aproxima de
+100\% em torno de 26 consultas, que é o valor máximo observado. Esse
+tipo de gráfico facilita a visualização dos \textbf{percentis}: basta
+projetar horizontalmente a linha desejada (25\%, 50\%, 75\%, etc.) até
+interceptar a curva e ler no eixo X o valor correspondente de consultas.
 \end{quote}
 
 \begin{Shaded}
@@ -1693,22 +1741,24 @@ total de pacientes avaliados, quantos ganharam peso no período e a
 proporção correspondente, acompanhada do IC95\%.
 
 \begin{quote}
-Resultado Entre os \emph{574} indivíduos acompanhados, \textbf{153
-(26,7\%; IC95\%: 23,1--30,5\%) apresentaram peso final maior do que o
-peso inicial}. Isso indica que aproximadamente um quarto dos pacientes
-teve ganho ponderal ao longo do período de seguimento, enquanto a
-maioria (73.3\%) apresentou peso final igual ou inferior ao inicial.
+Resultado:\\
+Entre os \emph{574} indivíduos acompanhados, \textbf{153 (26,7\%;
+IC95\%: 23,1--30,5\%) apresentaram peso final maior do que o peso
+inicial}. Isso indica que aproximadamente um quarto dos pacientes teve
+ganho ponderal ao longo do período de seguimento, enquanto a maioria
+(73.3\%) apresentou peso final igual ou inferior ao inicial.\\
 \end{quote}
 
 \begin{quote}
-Discussão Do ponto de vista clínico, esse achado sugere que, embora a
-maior parte dos pacientes tenha conseguido manter ou reduzir o peso em
-relação ao início do acompanhamento, ainda existe uma proporção
-considerável que apresentou reganho ponderal. Esse fenômeno é
-consistente com a literatura, que aponta a dificuldade de manutenção da
-perda de peso em longo prazo, especialmente em contextos de obesidade, e
-reforça a importância de estratégias de acompanhamento contínuo e
-intervenções sustentadas para prevenção do reganho.
+Discussão:\\
+Do ponto de vista clínico, esse achado sugere que, embora a maior parte
+dos pacientes tenha conseguido manter ou reduzir o peso em relação ao
+início do acompanhamento, ainda existe uma proporção considerável que
+apresentou reganho ponderal. Esse fenômeno é consistente com a
+literatura, que aponta a dificuldade de manutenção da perda de peso em
+longo prazo, especialmente em contextos de obesidade, e reforça a
+importância de estratégias de acompanhamento contínuo e intervenções
+sustentadas para prevenção do reganho.
 \end{quote}
 
 \subsubsection{1.7. Proporção de consultas (a partir da segunda) com
@@ -2011,11 +2061,12 @@ relatório/artigo: uma em relação à consulta anterior e outra em relação
 e a proporção (\%) com IC95\% para ``ganho'', ``perda'' e ``estável''.
 
 \begin{quote}
-Resultados Entre as consultas analisadas a partir da segunda visita,
-observou-se que \textbf{44,1\% (IC95\% 42,1--46,1)} apresentaram ganho
-de peso em relação à consulta imediatamente anterior, enquanto
-\textbf{53,4\% (IC95\% 51,4--55,4)} mostraram perda de peso e
-\textbf{2,5\% (IC95\% 2,0--3,3)} permaneceram estáveis.\\
+Resultados:\\
+Entre as consultas analisadas a partir da segunda visita, observou-se
+que \textbf{44,1\% (IC95\% 42,1--46,1)} apresentaram ganho de peso em
+relação à consulta imediatamente anterior, enquanto \textbf{53,4\%
+(IC95\% 51,4--55,4)} mostraram perda de peso e \textbf{2,5\% (IC95\%
+2,0--3,3)} permaneceram estáveis.\\
 Quando a referência foi a primeira consulta (baseline), os resultados
 evidenciaram uma tendência acumulada diferente: \textbf{35,7\% (IC95\%
 33,9--37,6)} das consultas estavam associadas a ganho de peso em relação
@@ -2024,13 +2075,14 @@ ao basal, \textbf{59,7\% (IC95\% 57,8--61,5)} a perda de peso, e
 Portanto, embora a análise \textbf{visita a visita} revele flutuações
 mais frequentes de ganho e perda, a comparação \textbf{com o peso
 inicial} sugere que, no seguimento acumulado, predominou a perda de
-peso.
+peso.\\
 \end{quote}
 
 \begin{quote}
-Discussão A análise longitudinal de perda de peso mostrou padrões
-distintos conforme o critério de referência utilizado. Considerando-se a
-consulta imediatamente anterior, a evolução do peso revelou \textbf{alta
+Discussão:\\
+A análise longitudinal de perda de peso mostrou padrões distintos
+conforme o critério de referência utilizado. Considerando-se a consulta
+imediatamente anterior, a evolução do peso revelou \textbf{alta
 variabilidade}, com proporções semelhantes de consultas com ganho e
 perda, refletindo as oscilações individuais e possivelmente influências
 transitórias de fatores comportamentais, clínicos ou mesmo variações
@@ -2773,10 +2825,12 @@ converter semanas em meses.
 \end{Highlighting}
 \end{Shaded}
 
-Aqui eu defino a trajetória pós-meta: para quem atingiu ≥5\%, guardo
-todas as observações da data da meta em diante e calculo o tempo desde a
-meta em semanas/meses. Também crio indicadores lógicos úteis: maint\_ge5
-(mantém ≥5\%) e below5 (caiu abaixo de 5\%).
+Aqui eu defino a trajetória pós-meta (\texttt{traj\_pos\_meta}): para
+quem atingiu ≥5\%, guardo todas as observações da data da meta em diante
+e calculo o tempo desde a meta em semanas (\texttt{weeks\_since\_t0}) e
+meses (\texttt{months\_since\_t0}). Também crio indicadores lógicos
+úteis: \texttt{maint\_ge5} (mantém ≥5\%) e \texttt{below5} (caiu abaixo
+de 5\%).
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -2820,9 +2874,9 @@ meta em semanas/meses. Também crio indicadores lógicos úteis: maint\_ge5
 
 Defino o primeiro evento de reganho: queda abaixo de 5\% após atingir a
 meta (com ou sem confirmação de duas medidas consecutivas). Produzo um
-dataset por paciente com indicador de evento (event) e tempo até o
-evento (em meses) ou tempo de censura (se nunca reganhou até a última
-observação).
+dataset com indicador de evento (\texttt{event}) e tempo até o evento em
+meses (\texttt{t\_event\_date}) ou tempo de censura (se nunca reganhou
+até a última observação).
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -2939,7 +2993,7 @@ Foi essa definição que usamos:\\
 - e o tempo mediano até o evento (24,2 meses).\\
 
 \begin{quote}
-resultados:\\
+Resultados:\\
 Frequência de reganho (primeira queda abaixo de 5\%)\\
 - 37,6\% dos pacientes que atingiram ≥5\% voltaram a ficar abaixo desse
 limiar em algum momento.\\
@@ -3007,29 +3061,6 @@ maioria manteve a perda por mais de 2 anos antes de recair.\\
 \NormalTok{    )}
 \NormalTok{  )}
 
-\NormalTok{reganho50\_primeiro}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{verbatim}
-# A tibble: 221 x 5
-   record_id t0_date             t50_date   t50_event time_to_50_months
-   <chr>     <dttm>              <date>     <lgl>                 <dbl>
- 1 0003157C  2018-08-14 00:00:00 2022-11-01 TRUE                   50.6
- 2 0003463C  2021-02-23 00:00:00 2022-08-02 TRUE                   17.2
- 3 0019782E  2022-11-22 00:00:00 NA         FALSE                  NA  
- 4 0025125C  2017-05-16 00:00:00 NA         FALSE                  NA  
- 5 0035667G  2022-12-06 00:00:00 NA         FALSE                  NA  
- 6 0038995F  2017-08-22 00:00:00 NA         FALSE                  NA  
- 7 0040586C  2019-01-15 00:00:00 NA         FALSE                  NA  
- 8 0042023A  2019-11-05 00:00:00 NA         FALSE                  NA  
- 9 0045145G  2018-10-30 00:00:00 NA         FALSE                  NA  
-10 0061300B  2019-09-03 00:00:00 NA         FALSE                  NA  
-# i 211 more rows
-\end{verbatim}
-
-\begin{Shaded}
-\begin{Highlighting}[]
 \CommentTok{\# Sumário da magnitude}
 \NormalTok{sum\_magnitude }\OtherTok{\textless{}{-}}\NormalTok{ tibble}\SpecialCharTok{::}\FunctionTok{tibble}\NormalTok{(}
   \StringTok{\textasciigrave{}}\AttributeTok{n com ≥5\% (subgrupo)}\StringTok{\textasciigrave{}}      \OtherTok{=}\NormalTok{ n\_subgrupo,}
@@ -3182,46 +3213,20 @@ interpretáveis:\\
 2. Proporção do tempo em manutenção (≥5\%), estimada por segmentos entre
 consultas.\\
 
-O que foi feito e por quê:\\
-- Definição do evento clínico de reganho: queda abaixo de 5\% após
-atingir a meta (com opção de duas medidas consecutivas para reduzir
-ruído).\\
-- Medidas de frequência:\\
-- Proporção que reganhou alguma vez (cumulativa).\\
-- Taxa de incidência por 100 pessoa‑anos (tempo até o primeiro
-reganho).\\
-- Sobrevida de manutenção em 6 e 12 meses (Kaplan--Meier), com mediana
-do tempo até reganho quando aplicável.\\
-- Magnitude do reganho:\\
-- Reganho ≥50\% do peso perdido em relação ao nadir (tempo e
-proporção).\\
-- Padrão longitudinal:\\
-- Oscilações (cruzamentos do limiar).\\
-- Proporção do tempo em manutenção (≥5\%).\\
-
-Essas métricas cobrem frequência, tempo e magnitude, fornecendo uma
-visão clínica completa do comportamento do grupo que atingiu ≥5\% de
-perda.
-
-Se quiser, eu preparo: 1. uma tabela única consolidando essas métricas,
-2. e um parágrafo de resultados já redigido (com placeholders para
-números) para colar no artigo.
-
 \begin{quote}
 Resultados:\\
 Padrão longitudinal (oscilação e tempo em manutenção)\\
 - O número de oscilações (entrar e sair do limiar de 5\%) foi baixo:
 mediana de 0 (IIQ 0--1). - Em termos de tempo, os pacientes passaram
-78\% (IIQ 44--100\%) do seguimento mantendo ≥5\% de perda.
+78\% (IIQ 44--100\%) do seguimento mantendo ≥5\% de perda. Esses achados
+sugerem que, embora uma parte dos pacientes reganhe peso após atingir a
+meta de ≥5\%, a maioria consegue manter esse benefício por um tempo
+prolongado. Aproximadamente 2 em cada 3 mantêm a perda em 12 meses, e o
+tempo até reganho substancial (≥50\% do perdido) é relativamente longo
+(mediana 17 meses). O padrão de oscilação foi pouco frequente,
+reforçando que a trajetória predominante é de manutenção estável, ao
+menos durante parte importante do acompanhamento.
 \end{quote}
-
-Esses achados sugerem que, embora uma parte dos pacientes reganhe peso
-após atingir a meta de ≥5\%, a maioria consegue manter esse benefício
-por um tempo prolongado. Aproximadamente 2 em cada 3 mantêm a perda em
-12 meses, e o tempo até reganho substancial (≥50\% do perdido) é
-relativamente longo (mediana 17 meses). O padrão de oscilação foi pouco
-frequente, reforçando que a trajetória predominante é de manutenção
-estável, ao menos durante parte importante do acompanhamento.
 
 \begin{quote}
 Resultados combinados das 3 análises:\\
@@ -3242,8 +3247,9 @@ períodos prolongados, com relativa estabilidade durante o
 acompanhamento.\\
 \end{quote}
 
-\subsubsection{Medidas de reganho de peso após atingir perda
-≥5\%}\label{medidas-de-reganho-de-peso-apuxf3s-atingir-perda-5}
+\begin{quote}
+Tabela: Medidas de reganho de peso após atingir perda ≥5\%
+\end{quote}
 
 \begin{longtable}[]{@{}ll@{}}
 \toprule\noalign{}
@@ -3478,15 +3484,913 @@ censurados, evidenciando que parte deles manteve a perda ≥5\% por até
 5--6 anos sem apresentar reganho.
 \end{quote}
 
-\subsubsection{3.3. Comparar a perda máxima entre subgrupos (≤6 meses,
-6--12 meses, \textgreater12
-meses).}\label{comparar-a-perda-muxe1xima-entre-subgrupos-6-meses-612-meses-12-meses.}
+\subsubsection{3.3. No subgrupo com perda ≥5\%, comparar o momento (≤6
+meses, 6--12 meses, \textgreater12 meses) em que a meta de perda de 5\%
+foi
+alcançada.}\label{no-subgrupo-com-perda-5-comparar-o-momento-6-meses-612-meses-12-meses-em-que-a-meta-de-perda-de-5-foi-alcanuxe7ada.}
+
+Objetivo: qual o tempo ideial de seguimento em que (dentre os que
+tiveram perda significativa) os indivíduos tem maior probabilidade de
+atingir a perda significativa.
+
+Racional: Otimizar o fluxo do ambulatório e definir um tempo ideal para
+darmos alta para o paciente, caso ele não atinja a perda de 5\% do peso,
+para podermos atender outro caso novo no lugar, dando chance a outra
+pessoa de perder peso
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\DocumentationTok{\#\#\# 3.3. No subgrupo com perda ≥5\%, comparar o momento (≤6m, 6–12m, 12–18m, 18–24m, 24–30m, 30–36m, \textgreater{}36m)}
+\DocumentationTok{\#\#\# em que a meta foi alcançada}
+
+\FunctionTok{library}\NormalTok{(dplyr)}
+\FunctionTok{library}\NormalTok{(purrr)}
+
+\CommentTok{\# Partimos de \textasciigrave{}momento\_perda5\textasciigrave{} (uma linha por paciente que atingiu ≥5\%)}
+\CommentTok{\# Criar meses até a 1ª vez que atingiu ≥5\% e classificar em 7 janelas}
+\NormalTok{atingiu\_por\_janela }\OtherTok{\textless{}{-}}\NormalTok{ momento\_perda5 }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}
+    \AttributeTok{meses\_ate\_5 =}\NormalTok{ week\_consultation }\SpecialCharTok{/} \FloatTok{4.345}\NormalTok{,}
+    \AttributeTok{janela =} \FunctionTok{case\_when}\NormalTok{(}
+\NormalTok{      meses\_ate\_5 }\SpecialCharTok{\textless{}=} \DecValTok{6}                       \SpecialCharTok{\textasciitilde{}} \StringTok{"≤6m"}\NormalTok{,}
+\NormalTok{      meses\_ate\_5 }\SpecialCharTok{\textgreater{}} \DecValTok{6}   \SpecialCharTok{\&}\NormalTok{ meses\_ate\_5 }\SpecialCharTok{\textless{}=} \DecValTok{12}  \SpecialCharTok{\textasciitilde{}} \StringTok{"6–12m"}\NormalTok{,}
+\NormalTok{      meses\_ate\_5 }\SpecialCharTok{\textgreater{}} \DecValTok{12}  \SpecialCharTok{\&}\NormalTok{ meses\_ate\_5 }\SpecialCharTok{\textless{}=} \DecValTok{18}  \SpecialCharTok{\textasciitilde{}} \StringTok{"12–18m"}\NormalTok{,}
+\NormalTok{      meses\_ate\_5 }\SpecialCharTok{\textgreater{}} \DecValTok{18}  \SpecialCharTok{\&}\NormalTok{ meses\_ate\_5 }\SpecialCharTok{\textless{}=} \DecValTok{24}  \SpecialCharTok{\textasciitilde{}} \StringTok{"18–24m"}\NormalTok{,}
+\NormalTok{      meses\_ate\_5 }\SpecialCharTok{\textgreater{}} \DecValTok{24}  \SpecialCharTok{\&}\NormalTok{ meses\_ate\_5 }\SpecialCharTok{\textless{}=} \DecValTok{30}  \SpecialCharTok{\textasciitilde{}} \StringTok{"24–30m"}\NormalTok{,}
+\NormalTok{      meses\_ate\_5 }\SpecialCharTok{\textgreater{}} \DecValTok{30}  \SpecialCharTok{\&}\NormalTok{ meses\_ate\_5 }\SpecialCharTok{\textless{}=} \DecValTok{36}  \SpecialCharTok{\textasciitilde{}} \StringTok{"30–36m"}\NormalTok{,}
+\NormalTok{      meses\_ate\_5 }\SpecialCharTok{\textgreater{}} \DecValTok{36}                       \SpecialCharTok{\textasciitilde{}} \StringTok{"\textgreater{}36m"}\NormalTok{,}
+      \ConstantTok{TRUE} \SpecialCharTok{\textasciitilde{}} \ConstantTok{NA\_character\_}
+\NormalTok{    ),}
+    \AttributeTok{janela =} \FunctionTok{factor}\NormalTok{(janela,}
+                    \AttributeTok{levels =} \FunctionTok{c}\NormalTok{(}\StringTok{"≤6m"}\NormalTok{,}\StringTok{"6–12m"}\NormalTok{,}\StringTok{"12–18m"}\NormalTok{,}
+                               \StringTok{"18–24m"}\NormalTok{,}\StringTok{"24–30m"}\NormalTok{,}\StringTok{"30–36m"}\NormalTok{,}\StringTok{"\textgreater{}36m"}\NormalTok{))}
+\NormalTok{  ) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{filter}\NormalTok{(}\SpecialCharTok{!}\FunctionTok{is.na}\NormalTok{(janela))}
+
+\CommentTok{\# Resumo com IC95\% binomial para a proporção em cada janela}
+\NormalTok{resumo\_janelas }\OtherTok{\textless{}{-}}\NormalTok{ atingiu\_por\_janela }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{count}\NormalTok{(janela, }\AttributeTok{name =} \StringTok{"n"}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}
+    \AttributeTok{N\_total =} \FunctionTok{sum}\NormalTok{(n),}
+    \AttributeTok{prop    =}\NormalTok{ n }\SpecialCharTok{/}\NormalTok{ N\_total}
+\NormalTok{  ) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{rowwise}\NormalTok{() }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}
+    \AttributeTok{ci\_low  =} \FunctionTok{binom.test}\NormalTok{(n, N\_total)}\SpecialCharTok{$}\NormalTok{conf.int[}\DecValTok{1}\NormalTok{],}
+    \AttributeTok{ci\_high =} \FunctionTok{binom.test}\NormalTok{(n, N\_total)}\SpecialCharTok{$}\NormalTok{conf.int[}\DecValTok{2}\NormalTok{]}
+\NormalTok{  ) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{ungroup}\NormalTok{()}
+
+\NormalTok{knitr}\SpecialCharTok{::}\FunctionTok{kable}\NormalTok{(}
+\NormalTok{  resumo\_janelas,}
+  \AttributeTok{digits =} \DecValTok{3}\NormalTok{,}
+  \AttributeTok{col.names =} \FunctionTok{c}\NormalTok{(}\StringTok{"Janela"}\NormalTok{, }\StringTok{"n"}\NormalTok{, }\StringTok{"N total"}\NormalTok{, }\StringTok{"Proporção"}\NormalTok{, }\StringTok{"IC95\% inferior"}\NormalTok{, }\StringTok{"IC95\% superior"}\NormalTok{),}
+  \AttributeTok{caption =} \StringTok{"Distribuição do primeiro alcance de perda ≥5\% por janela de tempo entre os que atingiram a meta."}\NormalTok{,}
+  \AttributeTok{align =} \FunctionTok{c}\NormalTok{(}\StringTok{"l"}\NormalTok{, }\StringTok{"c"}\NormalTok{, }\StringTok{"c"}\NormalTok{, }\StringTok{"c"}\NormalTok{, }\StringTok{"c"}\NormalTok{, }\StringTok{"c"}\NormalTok{)}
+\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{longtable}[]{@{}lccccc@{}}
+\caption{Distribuição do primeiro alcance de perda ≥5\% por janela de
+tempo entre os que atingiram a meta.}\tabularnewline
+\toprule\noalign{}
+Janela & n & N total & Proporção & IC95\% inferior & IC95\% superior \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+Janela & n & N total & Proporção & IC95\% inferior & IC95\% superior \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+≤6m & 67 & 221 & 0.303 & 0.243 & 0.368 \\
+6--12m & 63 & 221 & 0.285 & 0.227 & 0.349 \\
+12--18m & 29 & 221 & 0.131 & 0.090 & 0.183 \\
+18--24m & 16 & 221 & 0.072 & 0.042 & 0.115 \\
+24--30m & 10 & 221 & 0.045 & 0.022 & 0.082 \\
+30--36m & 8 & 221 & 0.036 & 0.016 & 0.070 \\
+\textgreater36m & 28 & 221 & 0.127 & 0.086 & 0.178 \\
+\end{longtable}
+
+Esse código agora cria sete categorias de tempo (≤6m, 6--12m, 12--18m,
+18--24m, 24--30m, 30--36m, \textgreater36m) para identificar em qual
+janela os pacientes que atingiram ≥5\% chegaram à meta. A tabela
+resumo\_janelas mostra n, proporção e IC95\% em cada faixa.
+
+\begin{quote}
+Interpretação:\\
+Entre os \textbf{221 pacientes que atingiram perda ≥5\%}, a distribuição
+do \textbf{primeiro alcance} da meta ocorreu de forma heterogênea ao
+longo do seguimento:\\
+\strut \\
+- \textbf{≤6 meses:} 30,3\% (IC95\%: 24,3--36,8)\\
+- \textbf{6--12 meses:} 28,5\% (IC95\%: 22,7--34,9)\\
+- \textbf{12--18 meses:} 13,1\% (IC95\%: 9,0--18,3)\\
+- \textbf{18--24 meses:} 7,2\% (IC95\%: 4,2--11,5)\\
+- \textbf{24--30 meses:} 4,5\% (IC95\%: 2,2--8,2)\\
+- \textbf{30--36 meses:} 3,6\% (IC95\%: 1,6--7,0)\\
+- \textbf{\textgreater36 meses:} 12,7\% (IC95\%: 8,6--17,8)\\
+\end{quote}
+
+\begin{quote}
+Resultados:\\
+Mais da metade dos pacientes respondeu em até \textbf{12 meses}
+(58,8\%), com maior concentração nos primeiros 6 meses (30,3\%).
+Entretanto, uma proporção não desprezível (≈41,2\%) atingiu a meta após
+12 meses, incluindo 12,7\% somente após 36 meses de seguimento.\\
+\end{quote}
+
+\begin{quote}
+Discussão:~ Esses achados sugerem que, embora o período de \textbf{até
+12 meses} seja o mais produtivo para identificar respondedores precoces,
+ainda há uma parcela significativa de \textbf{respondedores tardios} que
+podem se beneficiar de um seguimento prolongado. Do ponto de vista
+clínico e de gestão ambulatorial, isso sugere que uma \textbf{alta
+precoce baseada apenas na ausência de resposta em 12 meses} poderia
+descartar pacientes com chance real de atingir benefício clínico
+relevante em períodos posteriores.\\
+\end{quote}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(ggplot2)}
+\FunctionTok{library}\NormalTok{(scales)}
+\FunctionTok{library}\NormalTok{(dplyr)}
+
+\CommentTok{\# garantir ordem e colunas auxiliares para rótulos (\% e n)}
+\NormalTok{plot\_janelas }\OtherTok{\textless{}{-}}\NormalTok{ resumo\_janelas }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}
+    \AttributeTok{janela =} \FunctionTok{factor}\NormalTok{(janela,}
+      \AttributeTok{levels =} \FunctionTok{c}\NormalTok{(}\StringTok{"≤6m"}\NormalTok{,}\StringTok{"6–12m"}\NormalTok{,}\StringTok{"12–18m"}\NormalTok{,}\StringTok{"18–24m"}\NormalTok{,}\StringTok{"24–30m"}\NormalTok{,}\StringTok{"30–36m"}\NormalTok{,}\StringTok{"\textgreater{}36m"}\NormalTok{)}
+\NormalTok{    ),}
+    \AttributeTok{prop\_lab =} \FunctionTok{percent}\NormalTok{(prop, }\AttributeTok{accuracy =} \FloatTok{0.1}\NormalTok{),}
+    \AttributeTok{n\_lab =} \FunctionTok{paste0}\NormalTok{(}\StringTok{"n="}\NormalTok{, n)}
+\NormalTok{  )}
+
+\FunctionTok{ggplot}\NormalTok{(plot\_janelas, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ janela, }\AttributeTok{y =}\NormalTok{ prop)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_col}\NormalTok{(}\AttributeTok{width =} \FloatTok{0.7}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{geom\_errorbar}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{ymin =}\NormalTok{ ci\_low, }\AttributeTok{ymax =}\NormalTok{ ci\_high), }\AttributeTok{width =} \FloatTok{0.12}\NormalTok{, }\AttributeTok{linewidth =} \FloatTok{0.7}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{geom\_text}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{label =}\NormalTok{ prop\_lab), }\AttributeTok{vjust =} \SpecialCharTok{{-}}\FloatTok{0.4}\NormalTok{, }\AttributeTok{size =} \FloatTok{3.3}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{geom\_text}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{label =}\NormalTok{ n\_lab, }\AttributeTok{y =} \FunctionTok{pmax}\NormalTok{(prop }\SpecialCharTok{{-}} \FloatTok{0.04}\NormalTok{, }\FloatTok{0.01}\NormalTok{)), }\CommentTok{\# rótulo de n dentro da barra}
+            \AttributeTok{color =} \StringTok{"white"}\NormalTok{, }\AttributeTok{fontface =} \StringTok{"bold"}\NormalTok{, }\AttributeTok{size =} \DecValTok{3}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{scale\_y\_continuous}\NormalTok{(}\AttributeTok{labels =} \FunctionTok{percent\_format}\NormalTok{(}\AttributeTok{accuracy =} \DecValTok{1}\NormalTok{), }\AttributeTok{limits =} \FunctionTok{c}\NormalTok{(}\DecValTok{0}\NormalTok{, }\FloatTok{0.4}\NormalTok{)) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}\AttributeTok{x =} \StringTok{"Janela da 1ª vez que atingiu ≥5\%"}\NormalTok{, }\AttributeTok{y =} \StringTok{"Proporção dos respondedores (\%)"}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{theme\_minimal}\NormalTok{(}\AttributeTok{base\_size =} \DecValTok{12}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{theme}\NormalTok{(}
+    \AttributeTok{panel.grid.minor =} \FunctionTok{element\_blank}\NormalTok{(),}
+    \AttributeTok{axis.title.x =} \FunctionTok{element\_text}\NormalTok{(}\AttributeTok{margin =} \FunctionTok{margin}\NormalTok{(}\AttributeTok{t =} \DecValTok{8}\NormalTok{)),}
+    \AttributeTok{axis.title.y =} \FunctionTok{element\_text}\NormalTok{(}\AttributeTok{margin =} \FunctionTok{margin}\NormalTok{(}\AttributeTok{r =} \DecValTok{8}\NormalTok{))}
+\NormalTok{  )}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1\textwidth,height=\textheight]{outputs/figs/grafico-atingiu-por-janela-1.png}
+
+}
+
+\caption{Distribuição do primeiro alcance de perda ≥5\% por janela de
+tempo entre os que atingiram a meta (proporção e IC95\%).}
+
+\end{figure}%
+
+\begin{quote}
+Legenda:\\
+Distribuição do primeiro alcance de perda ≥5\% por janelas de tempo
+entre os pacientes que atingiram a meta. As barras representam a
+proporção (\%) de respondedores em cada intervalo, com intervalos de
+confiança de 95\%. Os valores sobre as colunas indicam a proporção e o
+número absoluto de pacientes (n) em cada grupo.
+\end{quote}
+
+\subsubsection{Probabilidade cumulativa de atingir
+≥5\%}\label{probabilidade-cumulativa-de-atingir-5}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Probabilidade cumulativa de atingir ≥5\% em múltiplos tempos (≤6m, 6–12m, 12–18m, 18–24m, 24–30m, 30–36m)}
+\CommentTok{\# Evento = "atingir ≥5\%"; censura = não atingiu até a última consulta}
+
+\FunctionTok{library}\NormalTok{(dplyr)}
+\FunctionTok{library}\NormalTok{(survival)}
+\FunctionTok{library}\NormalTok{(tibble)}
+
+\CommentTok{\# 1) Construir objeto de tempo para TODA a coorte (inclui quem nunca atingiu)}
+\NormalTok{tempo\_evento }\OtherTok{\textless{}{-}}\NormalTok{ momento\_perda5 }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{transmute}\NormalTok{(record\_id, }\AttributeTok{t\_event\_meses =}\NormalTok{ week\_consultation }\SpecialCharTok{/} \FloatTok{4.345}\NormalTok{, }\AttributeTok{status =} \DecValTok{1}\NormalTok{)}
+
+\NormalTok{tempo\_cens }\OtherTok{\textless{}{-}}\NormalTok{ obese }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(record\_id) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{summarize}\NormalTok{(}\AttributeTok{t\_last\_meses =} \FunctionTok{max}\NormalTok{(week\_consultation, }\AttributeTok{na.rm =} \ConstantTok{TRUE}\NormalTok{) }\SpecialCharTok{/} \FloatTok{4.345}\NormalTok{, }\AttributeTok{.groups =} \StringTok{"drop"}\NormalTok{)}
+
+\NormalTok{coorte\_tempo }\OtherTok{\textless{}{-}}\NormalTok{ tempo\_cens }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{left\_join}\NormalTok{(tempo\_evento, }\AttributeTok{by =} \StringTok{"record\_id"}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}
+    \AttributeTok{time   =} \FunctionTok{ifelse}\NormalTok{(}\SpecialCharTok{!}\FunctionTok{is.na}\NormalTok{(t\_event\_meses), t\_event\_meses, t\_last\_meses),}
+    \AttributeTok{status =} \FunctionTok{ifelse}\NormalTok{(}\SpecialCharTok{!}\FunctionTok{is.na}\NormalTok{(t\_event\_meses), }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{)  }\CommentTok{\# 1 = atingiu; 0 = censurado}
+\NormalTok{  )}
+
+\CommentTok{\# 2) Ajustar KM (sobrevida = ainda NÃO atingiu). Cumulativa = 1 {-} S(t)}
+\NormalTok{fit\_atingir }\OtherTok{\textless{}{-}} \FunctionTok{survfit}\NormalTok{(}\FunctionTok{Surv}\NormalTok{(time, status) }\SpecialCharTok{\textasciitilde{}} \DecValTok{1}\NormalTok{, }\AttributeTok{data =}\NormalTok{ coorte\_tempo, }\AttributeTok{conf.type =} \StringTok{"log"}\NormalTok{)}
+
+\CommentTok{\# 3) Tempos{-}alvo (em meses)}
+\NormalTok{tempos\_alvo }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}\DecValTok{6}\NormalTok{, }\DecValTok{12}\NormalTok{, }\DecValTok{18}\NormalTok{, }\DecValTok{24}\NormalTok{, }\DecValTok{30}\NormalTok{, }\DecValTok{36}\NormalTok{)}
+
+\CommentTok{\# 4) Extrair S(t) e IC95\% e converter para probabilidade cumulativa 1 {-} S(t)}
+\NormalTok{sum\_atingir }\OtherTok{\textless{}{-}} \FunctionTok{summary}\NormalTok{(fit\_atingir, }\AttributeTok{times =}\NormalTok{ tempos\_alvo, }\AttributeTok{extend =} \ConstantTok{TRUE}\NormalTok{)}
+
+\NormalTok{tabela\_cuminc }\OtherTok{\textless{}{-}} \FunctionTok{tibble}\NormalTok{(}
+  \AttributeTok{tempo\_meses =}\NormalTok{ sum\_atingir}\SpecialCharTok{$}\NormalTok{time,}
+  \AttributeTok{prob\_atingir =} \DecValTok{1} \SpecialCharTok{{-}}\NormalTok{ sum\_atingir}\SpecialCharTok{$}\NormalTok{surv,         }\CommentTok{\# cumulativa}
+  \AttributeTok{ic\_low       =} \DecValTok{1} \SpecialCharTok{{-}}\NormalTok{ sum\_atingir}\SpecialCharTok{$}\NormalTok{upper,        }\CommentTok{\# inverter limites de S(t)}
+  \AttributeTok{ic\_high      =} \DecValTok{1} \SpecialCharTok{{-}}\NormalTok{ sum\_atingir}\SpecialCharTok{$}\NormalTok{lower}
+\NormalTok{)}
+
+\CommentTok{\# Tabela formatada (percentuais) para o artigo}
+\NormalTok{tabela\_cuminc\_fmt }\OtherTok{\textless{}{-}}\NormalTok{ tabela\_cuminc }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}
+    \StringTok{\textasciigrave{}}\AttributeTok{Prob (\%)}\StringTok{\textasciigrave{}} \OtherTok{=}\NormalTok{ prob\_atingir }\SpecialCharTok{*} \DecValTok{100}\NormalTok{,}
+    \StringTok{\textasciigrave{}}\AttributeTok{IC95\% inferior}\StringTok{\textasciigrave{}} \OtherTok{=}\NormalTok{ ic\_low }\SpecialCharTok{*} \DecValTok{100}\NormalTok{,}
+    \StringTok{\textasciigrave{}}\AttributeTok{IC95\% superior}\StringTok{\textasciigrave{}} \OtherTok{=}\NormalTok{ ic\_high }\SpecialCharTok{*} \DecValTok{100}
+\NormalTok{  ) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{select}\NormalTok{(}\StringTok{\textasciigrave{}}\AttributeTok{Tempo (meses)}\StringTok{\textasciigrave{}} \OtherTok{=}\NormalTok{ tempo\_meses, }\StringTok{\textasciigrave{}}\AttributeTok{Prob (\%)}\StringTok{\textasciigrave{}}\NormalTok{, }\StringTok{\textasciigrave{}}\AttributeTok{IC95\% inferior}\StringTok{\textasciigrave{}}\NormalTok{, }\StringTok{\textasciigrave{}}\AttributeTok{IC95\% superior}\StringTok{\textasciigrave{}}\NormalTok{)}
+
+\NormalTok{knitr}\SpecialCharTok{::}\FunctionTok{kable}\NormalTok{(}
+\NormalTok{  tabela\_cuminc\_fmt,}
+  \AttributeTok{digits =} \DecValTok{3}\NormalTok{,}
+  \AttributeTok{caption =} \StringTok{"Probabilidade cumulativa de atingir perda ≥5\% em múltiplos tempos após o início do acompanhamento."}\NormalTok{,}
+  \AttributeTok{align =} \FunctionTok{c}\NormalTok{(}\StringTok{"c"}\NormalTok{, }\StringTok{"c"}\NormalTok{, }\StringTok{"c"}\NormalTok{, }\StringTok{"c"}\NormalTok{)}
+\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{longtable}[]{@{}cccc@{}}
+\caption{Probabilidade cumulativa de atingir perda ≥5\% em múltiplos
+tempos após o início do acompanhamento.}\tabularnewline
+\toprule\noalign{}
+Tempo (meses) & Prob (\%) & IC95\% inferior & IC95\% superior \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+Tempo (meses) & Prob (\%) & IC95\% inferior & IC95\% superior \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+6 & 12.760 & 9.849 & 15.577 \\
+12 & 27.603 & 23.369 & 31.604 \\
+18 & 36.008 & 31.192 & 40.487 \\
+24 & 41.483 & 36.302 & 46.243 \\
+30 & 45.632 & 40.131 & 50.627 \\
+36 & 49.756 & 43.864 & 55.029 \\
+\end{longtable}
+
+Esse chunk calcula, para toda a coorte com censura, a probabilidade
+cumulativa de atingir ≥5\% em 6, 12, 18, 24, 30 e 36 meses, com IC95\%
+(Greenwood via survfit). O argumento extend = TRUE mantém o último valor
+de S(t) caso o tempo solicitado ultrapasse o último tempo observado.
+
+\begin{quote}
+Resultados:\\
+Na análise de tempo até evento com censura (Kaplan--Meier), a
+probabilidade cumulativa de atingir perda ≥5\% aumentou progressivamente
+ao longo do seguimento. Aos 6 meses, cerca de 12,8\% (IC95\%: 9,8--15,6)
+dos pacientes já haviam alcançado a meta. Esse percentual subiu para
+27,6\% (IC95\%: 23,4--31,6) aos 12 meses, 36,0\% (IC95\%: 31,2--40,5)
+aos 18 meses, e 41,5\% (IC95\%: 36,3--46,2) aos 24 meses.\\
+No seguimento mais prolongado, as chances continuaram a crescer,
+atingindo 45,6\% (IC95\%: 40,1--50,6) aos 30 meses\\
+e 49,8\% (IC95\%: 43,9--55,0) aos 36 meses de acompanhamento.\\
+Interpretação: aproximadamente metade da coorte atingiu perda ≥5\% até
+três anos de seguimento. O maior ganho em probabilidade ocorreu nos
+primeiros 12 meses, mas uma fração importante de pacientes ainda atingiu
+a meta após esse período, reforçando a relevância do acompanhamento
+prolongado.\\
+\end{quote}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(ggplot2)}
+\FunctionTok{library}\NormalTok{(scales)}
+
+\CommentTok{\# Curva KM como 1 {-} S(t) (suavizado em degraus) + pontos com IC95\% nos marcos}
+\CommentTok{\# Construir data.frame da curva cumulativa completa}
+\NormalTok{km\_step }\OtherTok{\textless{}{-}} \FunctionTok{data.frame}\NormalTok{(}
+  \AttributeTok{time =}\NormalTok{ fit\_atingir}\SpecialCharTok{$}\NormalTok{time,}
+  \AttributeTok{cuminc =} \DecValTok{1} \SpecialCharTok{{-}}\NormalTok{ fit\_atingir}\SpecialCharTok{$}\NormalTok{surv}
+\NormalTok{)}
+
+\FunctionTok{ggplot}\NormalTok{(km\_step, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ time, }\AttributeTok{y =}\NormalTok{ cuminc)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_step}\NormalTok{(}\AttributeTok{linewidth =} \FloatTok{0.9}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{geom\_point}\NormalTok{(}\AttributeTok{data =}\NormalTok{ tabela\_cuminc,}
+             \FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ tempo\_meses, }\AttributeTok{y =}\NormalTok{ prob\_atingir)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_errorbar}\NormalTok{(}\AttributeTok{data =}\NormalTok{ tabela\_cuminc,}
+                \FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ tempo\_meses, }\AttributeTok{ymin =}\NormalTok{ ic\_low, }\AttributeTok{ymax =}\NormalTok{ ic\_high),}
+                \AttributeTok{width =} \FloatTok{0.6}\NormalTok{, }\AttributeTok{linewidth =} \FloatTok{0.6}\NormalTok{, }\AttributeTok{inherit.aes =} \ConstantTok{FALSE}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{scale\_y\_continuous}\NormalTok{(}\AttributeTok{labels =} \FunctionTok{percent\_format}\NormalTok{(}\AttributeTok{accuracy =} \DecValTok{1}\NormalTok{), }\AttributeTok{limits =} \FunctionTok{c}\NormalTok{(}\DecValTok{0}\NormalTok{, }\DecValTok{1}\NormalTok{)) }\SpecialCharTok{+}
+  \FunctionTok{scale\_x\_continuous}\NormalTok{(}\AttributeTok{breaks =}\NormalTok{ tempos\_alvo) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}\AttributeTok{x =} \StringTok{"Tempo (meses)"}\NormalTok{, }\AttributeTok{y =} \StringTok{"Probabilidade cumulativa (atingir ≥5\%)"}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{theme\_minimal}\NormalTok{(}\AttributeTok{base\_size =} \DecValTok{12}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1\textwidth,height=\textheight]{outputs/figs/plot-cuminc-atingir-5-varias-janelas-1.png}
+
+}
+
+\caption{Probabilidade cumulativa de atingir perda ≥5\% (evento) ao
+longo do tempo, com IC95\% nos marcos de 6, 12, 18, 24, 30 e 36 meses.}
+
+\end{figure}%
+
+O gráfico mostra a curva cumulativa (1 − S(t)) e destaca, com pontos e
+IC95\%, os marcos de 6, 12, 18, 24, 30 e 36 meses. Assim, você visualiza
+tanto a evolução contínua quanto os pontos de decisão úteis para o fluxo
+ambulatorial.
+
+\begin{quote}
+Legenda:\\
+Curva de Kaplan--Meier mostrando a probabilidade cumulativa de atingir
+perda ≥5\% ao longo do tempo, considerando a censura dos pacientes que
+não alcançaram o evento. Os pontos pretos na curva indicam os marcos de
+6, 12, 18, 24, 30 e 36 meses, com seus respectivos intervalos de
+confiança de 95\%, evidenciando a progressão contínua da proporção de
+pacientes que atingiram a meta durante o seguimento.
+\end{quote}
+
+\subsubsection{Probabilidade condicional de atingir ≥5\% em janelas
+sucessivas, dado que ainda não atingiu no início da
+janela}\label{probabilidade-condicional-de-atingir-5-em-janelas-sucessivas-dado-que-ainda-nuxe3o-atingiu-no-inuxedcio-da-janela}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Objetivo: estimar probabilidades CONDICIONAIS por janelas sucessivas:}
+\CommentTok{\# P(atingir ≥5\% em (a,b] | ainda não atingiu até a)}
+\CommentTok{\# a partir da curva de sobrevivência (KM) para "tempo até atingir ≥5\%".}
+
+\FunctionTok{library}\NormalTok{(dplyr)}
+\FunctionTok{library}\NormalTok{(survival)}
+\FunctionTok{library}\NormalTok{(tibble)}
+\FunctionTok{library}\NormalTok{(ggplot2)}
+\FunctionTok{library}\NormalTok{(scales)}
+
+\CommentTok{\# {-}{-}{-} (re)construir objeto de tempo da coorte inteira (evento = atingir ≥5\%) {-}{-}{-}}
+\NormalTok{tempo\_evento }\OtherTok{\textless{}{-}}\NormalTok{ momento\_perda5 }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{transmute}\NormalTok{(record\_id, }\AttributeTok{t\_event\_meses =}\NormalTok{ week\_consultation }\SpecialCharTok{/} \FloatTok{4.345}\NormalTok{, }\AttributeTok{status =} \DecValTok{1}\NormalTok{)}
+
+\NormalTok{tempo\_cens }\OtherTok{\textless{}{-}}\NormalTok{ obese }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(record\_id) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{summarize}\NormalTok{(}\AttributeTok{t\_last\_meses =} \FunctionTok{max}\NormalTok{(week\_consultation, }\AttributeTok{na.rm =} \ConstantTok{TRUE}\NormalTok{) }\SpecialCharTok{/} \FloatTok{4.345}\NormalTok{, }\AttributeTok{.groups =} \StringTok{"drop"}\NormalTok{)}
+
+\NormalTok{coorte\_tempo }\OtherTok{\textless{}{-}}\NormalTok{ tempo\_cens }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{left\_join}\NormalTok{(tempo\_evento, }\AttributeTok{by =} \StringTok{"record\_id"}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}
+    \AttributeTok{time   =} \FunctionTok{ifelse}\NormalTok{(}\SpecialCharTok{!}\FunctionTok{is.na}\NormalTok{(t\_event\_meses), t\_event\_meses, t\_last\_meses),}
+    \AttributeTok{status =} \FunctionTok{ifelse}\NormalTok{(}\SpecialCharTok{!}\FunctionTok{is.na}\NormalTok{(t\_event\_meses), }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{)  }\CommentTok{\# 1 = atingiu; 0 = censurado}
+\NormalTok{  )}
+
+\NormalTok{fit\_atingir }\OtherTok{\textless{}{-}} \FunctionTok{survfit}\NormalTok{(}\FunctionTok{Surv}\NormalTok{(time, status) }\SpecialCharTok{\textasciitilde{}} \DecValTok{1}\NormalTok{, }\AttributeTok{data =}\NormalTok{ coorte\_tempo, }\AttributeTok{conf.type =} \StringTok{"log"}\NormalTok{)}
+
+\CommentTok{\# {-}{-}{-} Janelas desejadas (em meses) {-}{-}{-}}
+\CommentTok{\# vamos calcular P((0,6] | T\textgreater{}0), P((6,12] | T\textgreater{}6), ..., P((30,36] | T\textgreater{}30) e P((36, fim] | T\textgreater{}36)}
+\NormalTok{cutpoints }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}\DecValTok{0}\NormalTok{, }\DecValTok{6}\NormalTok{, }\DecValTok{12}\NormalTok{, }\DecValTok{18}\NormalTok{, }\DecValTok{24}\NormalTok{, }\DecValTok{30}\NormalTok{, }\DecValTok{36}\NormalTok{)}
+\NormalTok{t\_end }\OtherTok{\textless{}{-}} \FunctionTok{max}\NormalTok{(coorte\_tempo}\SpecialCharTok{$}\NormalTok{time, }\AttributeTok{na.rm =} \ConstantTok{TRUE}\NormalTok{)}
+
+\CommentTok{\# Sobrevivência (S) nos pontos de corte e no fim do seguimento}
+\NormalTok{S\_pts }\OtherTok{\textless{}{-}} \FunctionTok{summary}\NormalTok{(fit\_atingir, }\AttributeTok{times =} \FunctionTok{c}\NormalTok{(cutpoints, t\_end), }\AttributeTok{extend =} \ConstantTok{TRUE}\NormalTok{)}\SpecialCharTok{$}\NormalTok{surv}
+\CommentTok{\# separar: S nos cortes e S no fim}
+\NormalTok{S\_cuts }\OtherTok{\textless{}{-}}\NormalTok{ S\_pts[}\FunctionTok{seq\_len}\NormalTok{(}\FunctionTok{length}\NormalTok{(cutpoints))]}
+\NormalTok{S\_end  }\OtherTok{\textless{}{-}}\NormalTok{ S\_pts[}\FunctionTok{length}\NormalTok{(S\_pts)]}
+
+\CommentTok{\# Probabilidade condicional por intervalo (a,b]: (S(a) {-} S(b)) / S(a)}
+\CommentTok{\# Para o último "\textgreater{}36m": (S(36) {-} S(end)) / S(36)}
+\NormalTok{p\_cond }\OtherTok{\textless{}{-}}\NormalTok{ (S\_cuts[}\SpecialCharTok{{-}}\FunctionTok{length}\NormalTok{(S\_cuts)] }\SpecialCharTok{{-}}\NormalTok{ S\_cuts[}\SpecialCharTok{{-}}\DecValTok{1}\NormalTok{]) }\SpecialCharTok{/}\NormalTok{ S\_cuts[}\SpecialCharTok{{-}}\FunctionTok{length}\NormalTok{(S\_cuts)]}
+\NormalTok{p\_last }\OtherTok{\textless{}{-}}\NormalTok{ (S\_cuts[}\FunctionTok{length}\NormalTok{(S\_cuts)] }\SpecialCharTok{{-}}\NormalTok{ S\_end) }\SpecialCharTok{/}\NormalTok{ S\_cuts[}\FunctionTok{length}\NormalTok{(S\_cuts)]}
+\NormalTok{p\_all  }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(p\_cond, p\_last)}
+
+\CommentTok{\# Rótulos das janelas}
+\NormalTok{labels }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}\StringTok{"≤6m"}\NormalTok{,}\StringTok{"6–12m"}\NormalTok{,}\StringTok{"12–18m"}\NormalTok{,}\StringTok{"18–24m"}\NormalTok{,}\StringTok{"24–30m"}\NormalTok{,}\StringTok{"30–36m"}\NormalTok{,}\StringTok{"\textgreater{}36m"}\NormalTok{)}
+
+\CommentTok{\# Número em risco no início de cada janela (útil para contexto)}
+\NormalTok{sum\_risk }\OtherTok{\textless{}{-}} \FunctionTok{summary}\NormalTok{(fit\_atingir, }\AttributeTok{times =}\NormalTok{ cutpoints, }\AttributeTok{extend =} \ConstantTok{TRUE}\NormalTok{)}
+\NormalTok{n\_risk   }\OtherTok{\textless{}{-}}\NormalTok{ sum\_risk}\SpecialCharTok{$}\NormalTok{n.risk}
+
+\CommentTok{\# Tabela final}
+\NormalTok{tabela\_prob\_cond }\OtherTok{\textless{}{-}} \FunctionTok{tibble}\NormalTok{(}
+  \StringTok{\textasciigrave{}}\AttributeTok{Janela}\StringTok{\textasciigrave{}} \OtherTok{=}\NormalTok{ labels,}
+  \StringTok{\textasciigrave{}}\AttributeTok{Em risco no início (n)}\StringTok{\textasciigrave{}} \OtherTok{=}\NormalTok{ n\_risk,}
+  \StringTok{\textasciigrave{}}\AttributeTok{Prob. condicional}\StringTok{\textasciigrave{}} \OtherTok{=}\NormalTok{ p\_all,}
+  \StringTok{\textasciigrave{}}\AttributeTok{Prob. condicional (\%)}\StringTok{\textasciigrave{}} \OtherTok{=} \DecValTok{100} \SpecialCharTok{*}\NormalTok{ p\_all}
+\NormalTok{)}
+
+\CommentTok{\# Tabela formatada}
+\NormalTok{tabela\_prob\_cond\_fmt }\OtherTok{\textless{}{-}}\NormalTok{ tabela\_prob\_cond }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}
+    \StringTok{\textasciigrave{}}\AttributeTok{Prob. condicional (\%)}\StringTok{\textasciigrave{}} \OtherTok{=} \FunctionTok{sprintf}\NormalTok{(}\StringTok{"\%.1f"}\NormalTok{, }\StringTok{\textasciigrave{}}\AttributeTok{Prob. condicional (\%)}\StringTok{\textasciigrave{}}\NormalTok{)}
+\NormalTok{  ) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{select}\NormalTok{(Janela, }\StringTok{\textasciigrave{}}\AttributeTok{Em risco no início (n)}\StringTok{\textasciigrave{}}\NormalTok{, }\StringTok{\textasciigrave{}}\AttributeTok{Prob. condicional (\%)}\StringTok{\textasciigrave{}}\NormalTok{)}
+
+\NormalTok{knitr}\SpecialCharTok{::}\FunctionTok{kable}\NormalTok{(}
+\NormalTok{  tabela\_prob\_cond\_fmt,}
+  \AttributeTok{caption =} \StringTok{"Probabilidade condicional de atingir perda ≥5\% em janelas sucessivas, entre os que ainda não atingiram até o início da janela."}\NormalTok{,}
+  \AttributeTok{col.names =} \FunctionTok{c}\NormalTok{(}\StringTok{"Janela"}\NormalTok{, }\StringTok{"Em risco no início (n)"}\NormalTok{, }\StringTok{"Prob. condicional (\%)"}\NormalTok{),}
+  \AttributeTok{align =} \FunctionTok{c}\NormalTok{(}\StringTok{"l"}\NormalTok{, }\StringTok{"c"}\NormalTok{, }\StringTok{"c"}\NormalTok{)}
+\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{longtable}[]{@{}lcc@{}}
+\caption{Probabilidade condicional de atingir perda ≥5\% em janelas
+sucessivas, entre os que ainda não atingiram até o início da
+janela.}\tabularnewline
+\toprule\noalign{}
+Janela & Em risco no início (n) & Prob. condicional (\%) \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+Janela & Em risco no início (n) & Prob. condicional (\%) \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+≤6m & 574 & 12.8 \\
+6--12m & 415 & 17.0 \\
+12--18m & 271 & 11.6 \\
+18--24m & 200 & 8.6 \\
+24--30m & 157 & 7.1 \\
+30--36m & 115 & 7.6 \\
+\textgreater36m & 91 & 45.8 \\
+\end{longtable}
+
+O código acima calcula, a partir da curva de Kaplan--Meier, a
+probabilidade condicional de atingir a meta em cada intervalo dado que
+ainda não havia atingido no início do intervalo.
+
+\begin{quote}
+\textbf{Resultados:}\\
+A análise de probabilidades condicionais mostrou que \textbf{12,8\%} dos
+pacientes atingiram perda ≥5\% nos \textbf{primeiros 6 meses} de
+seguimento. Entre aqueles que não haviam alcançado a meta até esse
+ponto, a probabilidade de atingi-la no intervalo \textbf{6--12 meses}
+foi de \textbf{17,0\%}. Já entre 12--18 meses, a chance condicional foi
+de \textbf{11,6\%}, caindo para \textbf{8,6\%} entre \textbf{18--24
+meses}, \textbf{7,1\%} entre \textbf{24--30 meses} e \textbf{7,6\%}
+entre \textbf{30--36 meses}.\\
+A partir de 36 meses, a probabilidade condicional foi de \textbf{45,8\%}
+entre os pacientes que permaneciam sem resposta até então.\\
+\end{quote}
+
+\paragraph{IC95\% por bootstrap de
+pacientes}\label{ic95-por-bootstrap-de-pacientes}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Probabilidades CONDICIONAIS por janelas sucessivas:}
+\CommentTok{\# P(atingir ≥5\% em (a,b] | ainda não atingiu até a), com IC95\% via bootstrap por paciente.}
+
+\FunctionTok{library}\NormalTok{(dplyr)}
+\FunctionTok{library}\NormalTok{(survival)}
+\FunctionTok{library}\NormalTok{(tibble)}
+\FunctionTok{library}\NormalTok{(purrr)}
+
+\CommentTok{\# {-}{-}{-} 1) Reconstruir coorte em formato "tempo até evento" (uma linha por paciente) {-}{-}{-}}
+\NormalTok{tempo\_evento }\OtherTok{\textless{}{-}}\NormalTok{ momento\_perda5 }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{transmute}\NormalTok{(record\_id, }\AttributeTok{t\_event\_meses =}\NormalTok{ week\_consultation }\SpecialCharTok{/} \FloatTok{4.345}\NormalTok{, }\AttributeTok{status =} \DecValTok{1}\NormalTok{)}
+
+\NormalTok{tempo\_cens }\OtherTok{\textless{}{-}}\NormalTok{ obese }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(record\_id) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{summarize}\NormalTok{(}\AttributeTok{t\_last\_meses =} \FunctionTok{max}\NormalTok{(week\_consultation, }\AttributeTok{na.rm =} \ConstantTok{TRUE}\NormalTok{) }\SpecialCharTok{/} \FloatTok{4.345}\NormalTok{, }\AttributeTok{.groups =} \StringTok{"drop"}\NormalTok{)}
+
+\NormalTok{coorte\_tempo }\OtherTok{\textless{}{-}}\NormalTok{ tempo\_cens }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{left\_join}\NormalTok{(tempo\_evento, }\AttributeTok{by =} \StringTok{"record\_id"}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}
+    \AttributeTok{time   =} \FunctionTok{ifelse}\NormalTok{(}\SpecialCharTok{!}\FunctionTok{is.na}\NormalTok{(t\_event\_meses), t\_event\_meses, t\_last\_meses),}
+    \AttributeTok{status =} \FunctionTok{ifelse}\NormalTok{(}\SpecialCharTok{!}\FunctionTok{is.na}\NormalTok{(t\_event\_meses), }\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{)  }\CommentTok{\# 1 = atingiu; 0 = censurado}
+\NormalTok{  )}
+
+\CommentTok{\# {-}{-}{-} 2) Função para extrair probabilidades condicionais por intervalo a partir de um objeto survfit {-}{-}{-}}
+\CommentTok{\# P((a,b] | T\textgreater{}a) = [S(a) {-} S(b)] / S(a), onde S(t) = Prob(T \textgreater{} t)}
+\NormalTok{prob\_condicionais }\OtherTok{\textless{}{-}} \ControlFlowTok{function}\NormalTok{(coorte\_df, cutpoints) \{}
+\NormalTok{  fit }\OtherTok{\textless{}{-}} \FunctionTok{survfit}\NormalTok{(}\FunctionTok{Surv}\NormalTok{(time, status) }\SpecialCharTok{\textasciitilde{}} \DecValTok{1}\NormalTok{, }\AttributeTok{data =}\NormalTok{ coorte\_df, }\AttributeTok{conf.type =} \StringTok{"log"}\NormalTok{)}
+\NormalTok{  t\_end }\OtherTok{\textless{}{-}} \FunctionTok{max}\NormalTok{(coorte\_df}\SpecialCharTok{$}\NormalTok{time, }\AttributeTok{na.rm =} \ConstantTok{TRUE}\NormalTok{)}
+\NormalTok{  S\_vec }\OtherTok{\textless{}{-}} \FunctionTok{summary}\NormalTok{(fit, }\AttributeTok{times =} \FunctionTok{c}\NormalTok{(cutpoints, t\_end), }\AttributeTok{extend =} \ConstantTok{TRUE}\NormalTok{)}\SpecialCharTok{$}\NormalTok{surv}
+\NormalTok{  S\_cuts }\OtherTok{\textless{}{-}}\NormalTok{ S\_vec[}\FunctionTok{seq\_len}\NormalTok{(}\FunctionTok{length}\NormalTok{(cutpoints))]   }\CommentTok{\# S nos pontos de corte}
+\NormalTok{  S\_end  }\OtherTok{\textless{}{-}}\NormalTok{ S\_vec[}\FunctionTok{length}\NormalTok{(S\_vec)]               }\CommentTok{\# S no fim do seguimento}
+  
+  \CommentTok{\# Evitar divisão por zero quando S(a) \textasciitilde{} 0}
+\NormalTok{  safe\_div }\OtherTok{\textless{}{-}} \ControlFlowTok{function}\NormalTok{(num, den) }\FunctionTok{ifelse}\NormalTok{(den }\SpecialCharTok{\textgreater{}} \DecValTok{0}\NormalTok{, num }\SpecialCharTok{/}\NormalTok{ den, }\ConstantTok{NA\_real\_}\NormalTok{)}
+  
+\NormalTok{  p\_cond }\OtherTok{\textless{}{-}} \FunctionTok{safe\_div}\NormalTok{(S\_cuts[}\SpecialCharTok{{-}}\FunctionTok{length}\NormalTok{(S\_cuts)] }\SpecialCharTok{{-}}\NormalTok{ S\_cuts[}\SpecialCharTok{{-}}\DecValTok{1}\NormalTok{], S\_cuts[}\SpecialCharTok{{-}}\FunctionTok{length}\NormalTok{(S\_cuts)])  }\CommentTok{\# (0{-}6], (6{-}12], ...}
+\NormalTok{  p\_last }\OtherTok{\textless{}{-}} \FunctionTok{safe\_div}\NormalTok{(S\_cuts[}\FunctionTok{length}\NormalTok{(S\_cuts)] }\SpecialCharTok{{-}}\NormalTok{ S\_end,       S\_cuts[}\FunctionTok{length}\NormalTok{(S\_cuts)])   }\CommentTok{\# (\textgreater{}36m até fim)}
+  \FunctionTok{c}\NormalTok{(p\_cond, p\_last)}
+\NormalTok{\}}
+
+\CommentTok{\# {-}{-}{-} 3) Prob. condicionais no conjunto original {-}{-}{-}}
+\NormalTok{cutpoints }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}\DecValTok{0}\NormalTok{, }\DecValTok{6}\NormalTok{, }\DecValTok{12}\NormalTok{, }\DecValTok{18}\NormalTok{, }\DecValTok{24}\NormalTok{, }\DecValTok{30}\NormalTok{, }\DecValTok{36}\NormalTok{)}
+\NormalTok{labels }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}\StringTok{"≤6m"}\NormalTok{,}\StringTok{"6–12m"}\NormalTok{,}\StringTok{"12–18m"}\NormalTok{,}\StringTok{"18–24m"}\NormalTok{,}\StringTok{"24–30m"}\NormalTok{,}\StringTok{"30–36m"}\NormalTok{,}\StringTok{"\textgreater{}36m"}\NormalTok{)}
+
+\NormalTok{fit\_full }\OtherTok{\textless{}{-}} \FunctionTok{survfit}\NormalTok{(}\FunctionTok{Surv}\NormalTok{(time, status) }\SpecialCharTok{\textasciitilde{}} \DecValTok{1}\NormalTok{, }\AttributeTok{data =}\NormalTok{ coorte\_tempo, }\AttributeTok{conf.type =} \StringTok{"log"}\NormalTok{)}
+\NormalTok{n\_risk   }\OtherTok{\textless{}{-}} \FunctionTok{summary}\NormalTok{(fit\_full, }\AttributeTok{times =}\NormalTok{ cutpoints, }\AttributeTok{extend =} \ConstantTok{TRUE}\NormalTok{)}\SpecialCharTok{$}\NormalTok{n.risk}
+
+\NormalTok{p\_orig }\OtherTok{\textless{}{-}} \FunctionTok{prob\_condicionais}\NormalTok{(coorte\_tempo, cutpoints)}
+
+\NormalTok{tabela\_prob\_cond }\OtherTok{\textless{}{-}} \FunctionTok{tibble}\NormalTok{(}
+  \AttributeTok{Janela =}\NormalTok{ labels,}
+  \StringTok{\textasciigrave{}}\AttributeTok{Em risco no início (n)}\StringTok{\textasciigrave{}} \OtherTok{=}\NormalTok{ n\_risk,}
+  \StringTok{\textasciigrave{}}\AttributeTok{Prob. condicional}\StringTok{\textasciigrave{}} \OtherTok{=}\NormalTok{ p\_orig}
+\NormalTok{)}
+
+\CommentTok{\# {-}{-}{-} 4) IC95\% por bootstrap de pacientes (re{-}amostra record\_id com reposição) {-}{-}{-}}
+\FunctionTok{set.seed}\NormalTok{(}\DecValTok{1234}\NormalTok{)}
+\NormalTok{B }\OtherTok{\textless{}{-}} \DecValTok{2000}
+
+\CommentTok{\# índices para bootstrap (amostragem por linha/paciente)}
+\NormalTok{idx\_list }\OtherTok{\textless{}{-}} \FunctionTok{replicate}\NormalTok{(B, }\FunctionTok{sample.int}\NormalTok{(}\FunctionTok{nrow}\NormalTok{(coorte\_tempo), }\AttributeTok{replace =} \ConstantTok{TRUE}\NormalTok{), }\AttributeTok{simplify =} \ConstantTok{FALSE}\NormalTok{)}
+
+\NormalTok{boot\_mat }\OtherTok{\textless{}{-}} \FunctionTok{map\_dbl}\NormalTok{(}\FunctionTok{seq\_len}\NormalTok{(B }\SpecialCharTok{*} \FunctionTok{length}\NormalTok{(labels)), }\ControlFlowTok{function}\NormalTok{(i) }\ConstantTok{NA\_real\_}\NormalTok{) }\CommentTok{\# pré{-}aloca}
+\NormalTok{boot\_mat }\OtherTok{\textless{}{-}} \FunctionTok{matrix}\NormalTok{(}\ConstantTok{NA\_real\_}\NormalTok{, }\AttributeTok{nrow =}\NormalTok{ B, }\AttributeTok{ncol =} \FunctionTok{length}\NormalTok{(labels))}
+
+\ControlFlowTok{for}\NormalTok{ (b }\ControlFlowTok{in} \FunctionTok{seq\_len}\NormalTok{(B)) \{}
+\NormalTok{  coorte\_boot }\OtherTok{\textless{}{-}}\NormalTok{ coorte\_tempo[idx\_list[[b]], , drop }\OtherTok{=} \ConstantTok{FALSE}\NormalTok{]}
+\NormalTok{  boot\_mat[b, ] }\OtherTok{\textless{}{-}} \FunctionTok{prob\_condicionais}\NormalTok{(coorte\_boot, cutpoints)}
+\NormalTok{\}}
+
+\CommentTok{\# Intervalos percentis 2.5\% e 97.5\%}
+\NormalTok{ci\_low  }\OtherTok{\textless{}{-}} \FunctionTok{apply}\NormalTok{(boot\_mat, }\DecValTok{2}\NormalTok{, quantile, }\AttributeTok{probs =} \FloatTok{0.025}\NormalTok{, }\AttributeTok{na.rm =} \ConstantTok{TRUE}\NormalTok{)}
+\NormalTok{ci\_high }\OtherTok{\textless{}{-}} \FunctionTok{apply}\NormalTok{(boot\_mat, }\DecValTok{2}\NormalTok{, quantile, }\AttributeTok{probs =} \FloatTok{0.975}\NormalTok{, }\AttributeTok{na.rm =} \ConstantTok{TRUE}\NormalTok{)}
+
+\NormalTok{tabela\_prob\_cond\_ci }\OtherTok{\textless{}{-}}\NormalTok{ tabela\_prob\_cond }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}
+    \StringTok{\textasciigrave{}}\AttributeTok{IC95\% inferior}\StringTok{\textasciigrave{}} \OtherTok{=}\NormalTok{ ci\_low,}
+    \StringTok{\textasciigrave{}}\AttributeTok{IC95\% superior}\StringTok{\textasciigrave{}} \OtherTok{=}\NormalTok{ ci\_high,}
+    \StringTok{\textasciigrave{}}\AttributeTok{Prob. condicional (\%)}\StringTok{\textasciigrave{}} \OtherTok{=} \DecValTok{100} \SpecialCharTok{*} \StringTok{\textasciigrave{}}\AttributeTok{Prob. condicional}\StringTok{\textasciigrave{}}\NormalTok{,}
+    \StringTok{\textasciigrave{}}\AttributeTok{IC95\% inferior (\%)}\StringTok{\textasciigrave{}} \OtherTok{=} \DecValTok{100} \SpecialCharTok{*} \StringTok{\textasciigrave{}}\AttributeTok{IC95\% inferior}\StringTok{\textasciigrave{}}\NormalTok{,}
+    \StringTok{\textasciigrave{}}\AttributeTok{IC95\% superior (\%)}\StringTok{\textasciigrave{}} \OtherTok{=} \DecValTok{100} \SpecialCharTok{*} \StringTok{\textasciigrave{}}\AttributeTok{IC95\% superior}\StringTok{\textasciigrave{}}
+\NormalTok{  )}
+
+\NormalTok{tabela\_prob\_cond\_ci}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+# A tibble: 7 x 8
+  Janela `Em risco no início (n)` `Prob. condicional` `IC95% inferior`
+  <chr>                     <dbl>               <dbl>            <dbl>
+1 ≤6m                         574              0.128            0.101 
+2 6–12m                       415              0.170            0.133 
+3 12–18m                      271              0.116            0.0773
+4 18–24m                      200              0.0856           0.0466
+5 24–30m                      157              0.0709           0.0303
+6 30–36m                      115              0.0759           0.0305
+7 >36m                         91              0.458            0.311 
+# i 4 more variables: `IC95% superior` <dbl>, `Prob. condicional (%)` <dbl>,
+#   `IC95% inferior (%)` <dbl>, `IC95% superior (%)` <dbl>
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{knitr}\SpecialCharTok{::}\FunctionTok{kable}\NormalTok{(}
+\NormalTok{  tabela\_prob\_cond\_ci }\SpecialCharTok{\%\textgreater{}\%}
+    \FunctionTok{select}\NormalTok{(Janela, }\StringTok{\textasciigrave{}}\AttributeTok{Em risco no início (n)}\StringTok{\textasciigrave{}}\NormalTok{, }\StringTok{\textasciigrave{}}\AttributeTok{Prob. condicional (\%)}\StringTok{\textasciigrave{}}\NormalTok{,}
+           \StringTok{\textasciigrave{}}\AttributeTok{IC95\% inferior (\%)}\StringTok{\textasciigrave{}}\NormalTok{, }\StringTok{\textasciigrave{}}\AttributeTok{IC95\% superior (\%)}\StringTok{\textasciigrave{}}\NormalTok{),}
+  \AttributeTok{digits =} \DecValTok{3}\NormalTok{,}
+  \AttributeTok{col.names =} \FunctionTok{c}\NormalTok{(}\StringTok{"Janela"}\NormalTok{, }\StringTok{"Em risco no início (n)"}\NormalTok{, }\StringTok{"Prob. condicional (\%)"}\NormalTok{,}
+                \StringTok{"IC95\% inferior (\%)"}\NormalTok{, }\StringTok{"IC95\% superior (\%)"}\NormalTok{),}
+  \AttributeTok{caption =} \StringTok{"Probabilidade condicional de atingir perda ≥5\% em janelas sucessivas, entre os que ainda não atingiram até o início da janela, com IC95\% via bootstrap (B=2000)."}\NormalTok{,}
+  \AttributeTok{align =} \FunctionTok{c}\NormalTok{(}\StringTok{"l"}\NormalTok{, }\StringTok{"c"}\NormalTok{, }\StringTok{"c"}\NormalTok{, }\StringTok{"c"}\NormalTok{, }\StringTok{"c"}\NormalTok{)}
+\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.0745}}
+  >{\centering\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2553}}
+  >{\centering\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2447}}
+  >{\centering\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2128}}
+  >{\centering\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2128}}@{}}
+\caption{Probabilidade condicional de atingir perda ≥5\% em janelas
+sucessivas, entre os que ainda não atingiram até o início da janela, com
+IC95\% via bootstrap (B=2000).}\tabularnewline
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Janela
+\end{minipage} & \begin{minipage}[b]{\linewidth}\centering
+Em risco no início (n)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\centering
+Prob. condicional (\%)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\centering
+IC95\% inferior (\%)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\centering
+IC95\% superior (\%)
+\end{minipage} \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Janela
+\end{minipage} & \begin{minipage}[b]{\linewidth}\centering
+Em risco no início (n)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\centering
+Prob. condicional (\%)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\centering
+IC95\% inferior (\%)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\centering
+IC95\% superior (\%)
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+≤6m & 574 & 12.760 & 10.056 & 15.543 \\
+6--12m & 415 & 17.014 & 13.317 & 20.939 \\
+12--18m & 271 & 11.609 & 7.732 & 15.791 \\
+18--24m & 200 & 8.557 & 4.662 & 12.722 \\
+24--30m & 157 & 7.089 & 3.031 & 11.424 \\
+30--36m & 115 & 7.586 & 3.054 & 13.057 \\
+\textgreater36m & 91 & 45.821 & 31.061 & 61.479 \\
+\end{longtable}
+
+O gráfico mostra eventos isolados por janela, condicionados à não
+resposta até o início de cada intervalo --- exatamente a pergunta
+clínica:
+
+\begin{itemize}
+\tightlist
+\item
+  ``Qual a chance de atingir ≥5\% até 6 meses?'' → ≤6m.
+\item
+  ``Se não atingiu até 6 meses, qual a chance entre 6--12m?'' → barra
+  6--12m.
+\item
+  \ldots{} e assim por diante, inclusive \textgreater36m (do mês 36 até
+  o final do seguimento observado).
+\end{itemize}
+
+O chunk calcula as probabilidades condicionais por janela (ex.: qual a
+chance de atingir entre 6--12 meses dado que não atingiu até 6 meses) e
+estima IC95\% via bootstrap por paciente (B=2000). A tabela final
+tabela\_prob\_cond\_ci inclui número em risco no início de cada janela,
+probabilidade condicional e IC95\%.
+
+\begin{quote}
+\textbf{Resultados:}\\
+A probabilidade condicional de atingir perda ≥5\% variou ao longo das
+janelas de seguimento.\\
+Nos \textbf{primeiros 6 meses}, \textbf{12,8\%} dos pacientes alcançaram
+a meta (IC95\%: 10,1--15,5).\\
+Entre aqueles que não haviam atingido até então, a chance de alcançá-la
+entre \textbf{6--12 meses} foi de \textbf{17,0\%} (IC95\%:
+13,3--20,9).\\
+Já nos intervalos subsequentes, as probabilidades condicionais foram
+menores: \textbf{11,6\%} (IC95\%: 7,7--15,8) entre \textbf{12--18
+meses}, \textbf{8,6\%} (IC95\%: 4,7--12,7) entre \textbf{18--24 meses},
+\textbf{7,1\%} (IC95\%: 3,0--11,4) entre \textbf{24--30 meses} e
+\textbf{7,6\%} (IC95\%: 3,1--13,1) entre \textbf{30--36 meses}.\\
+No grupo que permaneceu sem resposta até os \textbf{\textgreater36
+meses}, a probabilidade de atingir a perda mínima clínica foi de
+\textbf{45,8\%} (IC95\%: 31,1--61,5).\\
+Esses resultados indicam que a maior parte dos respondedores é
+identificada até os 12 meses, mas há também um subgrupo menor de
+respondedores tardios, inclusive após longos períodos de acompanhamento.
+\end{quote}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(ggplot2)}
+\FunctionTok{library}\NormalTok{(scales)}
+
+\CommentTok{\# 1) Prepara a ordem das janelas  }
+\CommentTok{\#    Converte \textasciigrave{}Janela\textasciigrave{} em *factor* com níveis definidos}
+\CommentTok{\#    Garante que o gráfico apareça em ordem cronológica no eixo X.}
+\NormalTok{tabela\_prob\_cond\_ci }\OtherTok{\textless{}{-}}\NormalTok{ tabela\_prob\_cond\_ci }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}
+    \AttributeTok{Janela =} \FunctionTok{factor}\NormalTok{(}
+\NormalTok{      Janela,}
+      \AttributeTok{levels =} \FunctionTok{c}\NormalTok{(}\StringTok{"≤6m"}\NormalTok{,}\StringTok{"6–12m"}\NormalTok{,}\StringTok{"12–18m"}\NormalTok{,}\StringTok{"18–24m"}\NormalTok{,}\StringTok{"24–30m"}\NormalTok{,}\StringTok{"30–36m"}\NormalTok{,}\StringTok{"\textgreater{}36m"}\NormalTok{)}
+\NormalTok{    )}
+\NormalTok{  )}
+
+\CommentTok{\# 2) Ajusta o limite superior do eixo Y  }
+\CommentTok{\#    Define \textasciigrave{}ylim\_top\textasciigrave{} como o maior valor entre 0,5 (50\%) e IC95\% superior + 0,05, }
+\CommentTok{\#    evitando que as barras/erros fiquem cortados e mantendo boa leitura P baixas.}
+\NormalTok{ylim\_top }\OtherTok{\textless{}{-}} \FunctionTok{max}\NormalTok{(}\FloatTok{0.5}\NormalTok{, }\FunctionTok{max}\NormalTok{(tabela\_prob\_cond\_ci}\SpecialCharTok{$}\StringTok{\textasciigrave{}}\AttributeTok{IC95\% superior}\StringTok{\textasciigrave{}}\NormalTok{, }\AttributeTok{na.rm =} \ConstantTok{TRUE}\NormalTok{) }\SpecialCharTok{+} \FloatTok{0.05}\NormalTok{)}
+
+\CommentTok{\# 3) Constrói o gráfico de barras com IC95\%  }
+\CommentTok{\# {-} \textasciigrave{}geom\_col()\textasciigrave{} plota a probabilidade condicional de atingir ≥5\% em cada janela, }
+\CommentTok{\#    condicionada a não ter atingido antes do início da \# janela.  }
+\CommentTok{\# {-} \textasciigrave{}geom\_errorbar()\textasciigrave{} adiciona as barras de erro com os IC95\% bootstrap (B=2000)  }
+\CommentTok{\# {-} \textasciigrave{}geom\_text()\textasciigrave{} escreve o rótulo em \% sobre cada barra.}
+\FunctionTok{ggplot}\NormalTok{(tabela\_prob\_cond\_ci, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ Janela, }\AttributeTok{y =} \StringTok{\textasciigrave{}}\AttributeTok{Prob. condicional}\StringTok{\textasciigrave{}}\NormalTok{)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_col}\NormalTok{(}\AttributeTok{width =} \FloatTok{0.7}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{geom\_errorbar}\NormalTok{(}
+    \FunctionTok{aes}\NormalTok{(}\AttributeTok{ymin =} \StringTok{\textasciigrave{}}\AttributeTok{IC95\% inferior}\StringTok{\textasciigrave{}}\NormalTok{, }\AttributeTok{ymax =} \StringTok{\textasciigrave{}}\AttributeTok{IC95\% superior}\StringTok{\textasciigrave{}}\NormalTok{),}
+    \AttributeTok{width =} \FloatTok{0.12}\NormalTok{, }\AttributeTok{linewidth =} \FloatTok{0.7}
+\NormalTok{  ) }\SpecialCharTok{+}
+  \FunctionTok{geom\_text}\NormalTok{(}
+    \FunctionTok{aes}\NormalTok{(}\AttributeTok{label =} \FunctionTok{percent}\NormalTok{(}\StringTok{\textasciigrave{}}\AttributeTok{Prob. condicional}\StringTok{\textasciigrave{}}\NormalTok{, }\AttributeTok{accuracy =} \FloatTok{0.1}\NormalTok{)),}
+    \AttributeTok{vjust =} \SpecialCharTok{{-}}\FloatTok{0.4}\NormalTok{, }\AttributeTok{size =} \FloatTok{3.2}
+\NormalTok{  ) }\SpecialCharTok{+}
+\CommentTok{\# 4) Formata eixos e tema  }
+\CommentTok{\# {-} \textasciigrave{}scale\_y\_continuous()\textasciigrave{} mostra o eixo Y em percentuais e aplica os limites calculados.  }
+\CommentTok{\# {-} \textasciigrave{}labs()\textasciigrave{} rotula os eixos deixando claro que o evento é “atingir ≥5\%”.  }
+\CommentTok{\# {-} \textasciigrave{}theme\_minimal()\textasciigrave{} e a remoção da grade menor deixam o gráfico limpo para publicação.}
+  \FunctionTok{scale\_y\_continuous}\NormalTok{(}\AttributeTok{labels =} \FunctionTok{percent\_format}\NormalTok{(}\AttributeTok{accuracy =} \DecValTok{1}\NormalTok{), }\AttributeTok{limits =} \FunctionTok{c}\NormalTok{(}\DecValTok{0}\NormalTok{, ylim\_top)) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}\AttributeTok{x =} \StringTok{"Janela de tempo"}\NormalTok{, }\AttributeTok{y =} \StringTok{"Probabilidade condicional (evento = atingir ≥5\%)"}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{theme\_minimal}\NormalTok{(}\AttributeTok{base\_size =} \DecValTok{12}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{theme}\NormalTok{(}\AttributeTok{panel.grid.minor =} \FunctionTok{element\_blank}\NormalTok{())}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1\textwidth,height=\textheight]{outputs/figs/plot-prob-cond-intervalos-ci-1.png}
+
+}
+
+\caption{Probabilidade condicional de atingir ≥5\% por janelas
+sucessivas, com IC95\% bootstrap (B=2000), condicionada a não ter
+atingido no início de cada janela.}
+
+\end{figure}%
+
+O código plota, em ordem cronológica, as probabilidades condicionais por
+intervalos sucessivos (≤6m, 6--12m, \ldots, \textgreater36m) de atingir
+perda ≥5\%, dado que o paciente ainda não havia atingido antes do início
+de cada janela. Cada barra traz seu IC95\% (bootstrap) e o rótulo
+percentual, permitindo leitura direta e comparável entre janelas.
+
+\begin{quote}
+Legenda:\\
+Probabilidade \textbf{condicional} de atingir perda ≥5\% em janelas
+sucessivas de tempo, \textbf{condicionada a não ter atingido a meta no
+início da janela}. As barras representam as estimativas pontuais e as
+linhas verticais os \textbf{intervalos de confiança de 95\% (bootstrap,
+B=2000)}. Observa-se maior probabilidade nos primeiros 12 meses e
+novamente após os 36 meses de acompanhamento.
+\end{quote}
+
+\subsubsection{3.4. Comparar a PERDA MÁXIMA (\%) entre as 7 janelas do
+1º alcance (≤6m, 6--12m, 12--18m, 18--24m, 24--30m, 30--36m,
+\textgreater36m)}\label{comparar-a-perda-muxe1xima-entre-as-7-janelas-do-1uxba-alcance-6m-612m-1218m-1824m-2430m-3036m-36m}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# c) Comparar a PERDA MÁXIMA (\%) entre as 7 janelas do 1º alcance (≤6m, 6–12m, 12–18m, 18–24m, 24–30m, 30–36m, \textgreater{}36m)}
+
+\FunctionTok{library}\NormalTok{(dplyr)}
+
+\CommentTok{\# 1) Nadir (maior perda percentual) por paciente ao longo de }\AlertTok{TODO}\CommentTok{ o seguimento}
+\NormalTok{nadir\_por\_paciente }\OtherTok{\textless{}{-}}\NormalTok{ obese }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{filter}\NormalTok{(}\SpecialCharTok{!}\FunctionTok{is.na}\NormalTok{(percent\_weight\_loss)) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(record\_id) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{slice\_max}\NormalTok{(percent\_weight\_loss, }\AttributeTok{with\_ties =} \ConstantTok{FALSE}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{ungroup}\NormalTok{() }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{select}\NormalTok{(record\_id, }\AttributeTok{perda\_maxima =}\NormalTok{ percent\_weight\_loss)}
+
+\CommentTok{\# 2) Garantir que \textasciigrave{}atingiu\_por\_janela\textasciigrave{} tem as 7 janelas (caso tenha sido criado antes)}
+\NormalTok{atingiu\_por\_janela }\OtherTok{\textless{}{-}}\NormalTok{ momento\_perda5 }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}
+    \AttributeTok{meses\_ate\_5 =}\NormalTok{ week\_consultation }\SpecialCharTok{/} \FloatTok{4.345}\NormalTok{,}
+    \AttributeTok{janela =}\NormalTok{ dplyr}\SpecialCharTok{::}\FunctionTok{case\_when}\NormalTok{(}
+\NormalTok{      meses\_ate\_5 }\SpecialCharTok{\textless{}=} \DecValTok{6}                       \SpecialCharTok{\textasciitilde{}} \StringTok{"≤6m"}\NormalTok{,}
+\NormalTok{      meses\_ate\_5 }\SpecialCharTok{\textgreater{}} \DecValTok{6}  \SpecialCharTok{\&}\NormalTok{ meses\_ate\_5 }\SpecialCharTok{\textless{}=} \DecValTok{12}   \SpecialCharTok{\textasciitilde{}} \StringTok{"6–12m"}\NormalTok{,}
+\NormalTok{      meses\_ate\_5 }\SpecialCharTok{\textgreater{}} \DecValTok{12} \SpecialCharTok{\&}\NormalTok{ meses\_ate\_5 }\SpecialCharTok{\textless{}=} \DecValTok{18}   \SpecialCharTok{\textasciitilde{}} \StringTok{"12–18m"}\NormalTok{,}
+\NormalTok{      meses\_ate\_5 }\SpecialCharTok{\textgreater{}} \DecValTok{18} \SpecialCharTok{\&}\NormalTok{ meses\_ate\_5 }\SpecialCharTok{\textless{}=} \DecValTok{24}   \SpecialCharTok{\textasciitilde{}} \StringTok{"18–24m"}\NormalTok{,}
+\NormalTok{      meses\_ate\_5 }\SpecialCharTok{\textgreater{}} \DecValTok{24} \SpecialCharTok{\&}\NormalTok{ meses\_ate\_5 }\SpecialCharTok{\textless{}=} \DecValTok{30}   \SpecialCharTok{\textasciitilde{}} \StringTok{"24–30m"}\NormalTok{,}
+\NormalTok{      meses\_ate\_5 }\SpecialCharTok{\textgreater{}} \DecValTok{30} \SpecialCharTok{\&}\NormalTok{ meses\_ate\_5 }\SpecialCharTok{\textless{}=} \DecValTok{36}   \SpecialCharTok{\textasciitilde{}} \StringTok{"30–36m"}\NormalTok{,}
+\NormalTok{      meses\_ate\_5 }\SpecialCharTok{\textgreater{}} \DecValTok{36}                       \SpecialCharTok{\textasciitilde{}} \StringTok{"\textgreater{}36m"}\NormalTok{,}
+      \ConstantTok{TRUE} \SpecialCharTok{\textasciitilde{}} \ConstantTok{NA\_character\_}
+\NormalTok{    ),}
+    \AttributeTok{janela =} \FunctionTok{factor}\NormalTok{(janela, }\AttributeTok{levels =} \FunctionTok{c}\NormalTok{(}\StringTok{"≤6m"}\NormalTok{,}\StringTok{"6–12m"}\NormalTok{,}\StringTok{"12–18m"}\NormalTok{,}\StringTok{"18–24m"}\NormalTok{,}\StringTok{"24–30m"}\NormalTok{,}\StringTok{"30–36m"}\NormalTok{,}\StringTok{"\textgreater{}36m"}\NormalTok{))}
+\NormalTok{  ) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{filter}\NormalTok{(}\SpecialCharTok{!}\FunctionTok{is.na}\NormalTok{(janela))}
+
+\CommentTok{\# 3) Juntar perda máxima ao grupo de janelas}
+\NormalTok{comparacao\_perda\_max }\OtherTok{\textless{}{-}}\NormalTok{ atingiu\_por\_janela }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{left\_join}\NormalTok{(nadir\_por\_paciente, }\AttributeTok{by =} \StringTok{"record\_id"}\NormalTok{)}
+
+\CommentTok{\# 4) Teste global não{-}paramétrico (Kruskal–Wallis)}
+\NormalTok{kw\_test }\OtherTok{\textless{}{-}} \FunctionTok{kruskal.test}\NormalTok{(perda\_maxima }\SpecialCharTok{\textasciitilde{}}\NormalTok{ janela, }\AttributeTok{data =}\NormalTok{ comparacao\_perda\_max)}
+
+\CommentTok{\# 5) Sumário por janela (mediana + IC95\% via bootstrap da mediana)}
+\FunctionTok{set.seed}\NormalTok{(}\DecValTok{123}\NormalTok{)}
+\NormalTok{boot\_ci }\OtherTok{\textless{}{-}} \ControlFlowTok{function}\NormalTok{(x, }\AttributeTok{B =} \DecValTok{2000}\NormalTok{) \{}
+  \ControlFlowTok{if}\NormalTok{ (}\FunctionTok{all}\NormalTok{(}\FunctionTok{is.na}\NormalTok{(x))) }\FunctionTok{return}\NormalTok{(}\FunctionTok{c}\NormalTok{(}\ConstantTok{NA\_real\_}\NormalTok{, }\ConstantTok{NA\_real\_}\NormalTok{))}
+\NormalTok{  boots }\OtherTok{\textless{}{-}} \FunctionTok{replicate}\NormalTok{(B, }\FunctionTok{median}\NormalTok{(}\FunctionTok{sample}\NormalTok{(x[}\SpecialCharTok{!}\FunctionTok{is.na}\NormalTok{(x)], }\AttributeTok{replace =} \ConstantTok{TRUE}\NormalTok{)))}
+\NormalTok{  stats}\SpecialCharTok{::}\FunctionTok{quantile}\NormalTok{(boots, }\FunctionTok{c}\NormalTok{(}\FloatTok{0.025}\NormalTok{, }\FloatTok{0.975}\NormalTok{), }\AttributeTok{na.rm =} \ConstantTok{TRUE}\NormalTok{)}
+\NormalTok{\}}
+
+\NormalTok{resumo\_perda\_max }\OtherTok{\textless{}{-}}\NormalTok{ comparacao\_perda\_max }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(janela) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{summarize}\NormalTok{(}
+    \AttributeTok{n =} \FunctionTok{n}\NormalTok{(),}
+    \AttributeTok{mediana =} \FunctionTok{median}\NormalTok{(perda\_maxima, }\AttributeTok{na.rm =} \ConstantTok{TRUE}\NormalTok{),}
+    \AttributeTok{ic\_low  =} \FunctionTok{boot\_ci}\NormalTok{(perda\_maxima)[}\DecValTok{1}\NormalTok{],}
+    \AttributeTok{ic\_high =} \FunctionTok{boot\_ci}\NormalTok{(perda\_maxima)[}\DecValTok{2}\NormalTok{],}
+    \AttributeTok{.groups =} \StringTok{"drop"}
+\NormalTok{  )}
+
+\FunctionTok{list}\NormalTok{(}\AttributeTok{resumo\_perda\_max =}\NormalTok{ resumo\_perda\_max, }\AttributeTok{kruskal\_wallis =}\NormalTok{ kw\_test)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+$resumo_perda_max
+# A tibble: 7 x 5
+  janela     n mediana ic_low ic_high
+  <fct>  <int>   <dbl>  <dbl>   <dbl>
+1 ≤6m       67    9.85   8.01    11.3
+2 6–12m     63   10.0    8.14    12.1
+3 12–18m    29   10.1    7.44    12.7
+4 18–24m    16    7.63   6.10    11.9
+5 24–30m    10    7.87   5.88    13.9
+6 30–36m     8    9.43   6.92    12.4
+7 >36m      28    9.76   7.76    13.3
+
+$kruskal_wallis
+
+    Kruskal-Wallis rank sum test
+
+data:  perda_maxima by janela
+Kruskal-Wallis chi-squared = 2.3203, df = 6, p-value = 0.888
+\end{verbatim}
+
+O código acima estende a comparação da perda máxima (\%) para as 7
+janelas definidas, calcula o teste de Kruskal--Wallis e produz uma
+tabela com n, mediana e IC95\% (bootstrap) por janela.
+
+A análise da \textbf{perda máxima de peso (\%)} ao longo do seguimento,
+estratificada pela \textbf{janela em que o paciente atingiu pela
+primeira vez ≥5\%}, mostrou que as \textbf{medianas foram semelhantes}
+entre os grupos:\\
+- \textbf{≤6m:} 9,9\% (IC95\%: 8,0--11,3)\\
+- \textbf{6--12m:} 10,0\% (IC95\%: 8,1--12,1)\\
+- \textbf{12--18m:} 10,1\% (IC95\%: 7,4--12,7)\\
+- \textbf{18--24m:} 7,6\% (IC95\%: 5,6--12,0)\\
+- \textbf{24--30m:} 8,7\% (IC95\%: 5,8--13,9)\\
+- \textbf{30--36m:} 9,4\% (IC95\%: 6,9--12,4)\\
+- \textbf{\textgreater36m:} 9,8\% (IC95\%: 7,8--13,3)
+
+O \textbf{teste de Kruskal--Wallis} não identificou diferenças
+estatisticamente significativas entre as janelas (χ²=2,32; gl=6;
+p=0,888).
+
+\textbf{Interpretação:} independentemente do momento em que os pacientes
+alcançaram a perda inicial de ≥5\%, a \textbf{perda máxima subsequente
+foi semelhante} entre os grupos, sugerindo que o padrão de resposta em
+termos de perda máxima é relativamente constante, seja para
+respondedores precoces ou tardios.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(ggplot2)}
+\FunctionTok{library}\NormalTok{(scales)}
+
+\FunctionTok{ggplot}\NormalTok{(resumo\_perda\_max, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ janela, }\AttributeTok{y =}\NormalTok{ mediana)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_col}\NormalTok{(}\AttributeTok{width =} \FloatTok{0.7}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{geom\_errorbar}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{ymin =}\NormalTok{ ic\_low, }\AttributeTok{ymax =}\NormalTok{ ic\_high), }\AttributeTok{width =} \FloatTok{0.12}\NormalTok{, }\AttributeTok{linewidth =} \FloatTok{0.7}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{scale\_y\_continuous}\NormalTok{(}\AttributeTok{labels =} \FunctionTok{label\_number}\NormalTok{(}\AttributeTok{accuracy =} \FloatTok{0.1}\NormalTok{)) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}\AttributeTok{x =} \StringTok{"Janela do 1º alcance de ≥5\%"}\NormalTok{, }\AttributeTok{y =} \StringTok{"Perda máxima (\%)"}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{theme\_minimal}\NormalTok{(}\AttributeTok{base\_size =} \DecValTok{12}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{theme}\NormalTok{(}\AttributeTok{panel.grid.minor =} \FunctionTok{element\_blank}\NormalTok{())}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1\textwidth,height=\textheight]{outputs/figs/grafico-perda-maxima-por-janela-7-1.png}
+
+}
+
+\caption{Perda máxima (\%) ao longo do seguimento, estratificada pela
+janela do primeiro alcance de ≥5\% (mediana e IC95\% bootstrap).}
+
+\end{figure}%
+
+O gráfico resume a perda máxima por janela do primeiro alcance de ≥5\%,
+mostrando medianas e IC95\% por bootstrap.
+
+\begin{quote}
+Legenda:\\
+Perda máxima de peso (\%) ao longo do seguimento, estratificada pela
+\textbf{janela em que ocorreu o primeiro alcance de perda ≥5\%}.\\
+As barras representam as \textbf{medianas} e as linhas verticais os
+\textbf{intervalos de confiança de 95\% (IC95\%) obtidos por
+bootstrap}.\\
+Observa-se que a perda máxima foi semelhante entre as diferentes janelas
+de tempo, sem diferenças estatisticamente significativas.\\
+\end{quote}
 
 \subsection{4. Grupo sem perda ≥5\%}\label{grupo-sem-perda-5}
 
-\subsubsection{4.1. Identificar tempo de seguimento e consulta com maior
-perda
-observada.}\label{identificar-tempo-de-seguimento-e-consulta-com-maior-perda-observada.}
+\subsubsection{4.1. Identificar estimativas associadas a maior perda de
+peso observada: percentual de perda máxima, tempo desde o seguimento e
+consulta em que atingiu perda
+máxima}\label{identificar-estimativas-associadas-a-maior-perda-de-peso-observada-percentual-de-perda-muxe1xima-tempo-desde-o-seguimento-e-consulta-em-que-atingiu-perda-muxe1xima}
 
 \subsubsection{4.2. Descrever o ganho de peso após esse
 momento.}\label{descrever-o-ganho-de-peso-apuxf3s-esse-momento.}

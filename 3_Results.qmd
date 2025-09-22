@@ -1,0 +1,399 @@
+---
+title: "ODIS Retrospectivo"
+subtitle: "Resultados"
+format: html
+---
+
+# Banco de dados
+
+O banco de dados `consultas` reúne 5.202 observações referentes a consultas médicas de 872 pacientes distintos. Aproximadamente 20% das consultas não tem um valor de peso aferido no dia. A amplitude de acompanhamento é de janeiro de 2016 a outubro de 2023. O primeiro filtro aplicado seleciona apenas os pacientes que em algum momento do seguimento apresentaram IMC ≥ 30 kg/m² (critério de obesidade).
+
+Depois de aplicar o filtro, o dataframe consultas (5.202 consultas, 872 pacientes) passou a conter apenas os pacientes que apresentaram IMC ≥ 30 em pelo menos uma consulta, resultando no novo dataframe obese. O dataframe obese mantém a mesma estrutura de variáveis (17 colunas), mas contém menos pacientes (695) e menos consultas (4.102), restrito àqueles que tiveram obesidade (IMC ≥ 30) em pelo menos uma avaliação. Esse subconjunto apresenta peso e IMC médios mais altos, idade média ligeiramente menor e preserva as distribuições de sexo, raça e período de acompanhamento do banco original.
+
+A tabela abaixo apresenta um resumo comparativo entre o dataframe original consultas e o novo dataframe obese, destacando as principais características demográficas e antropométricas dos pacientes.
+
++-----------------------+----------------------+--------------------------------+
+| Característica        | consultas (original) | novo (IMC ≥ 30 em ≥1 consulta) |
++=======================+======================+================================+
+| Nº de pacientes       | 872                  | 695 (79.7%) / perda de 20.3%   |
++-----------------------+----------------------+--------------------------------+
+| Nº de consultas       | 5.202                | 4.102                          |
++-----------------------+----------------------+--------------------------------+
+| Idade média (anos)    | 47,3                 | 45,7                           |
++-----------------------+----------------------+--------------------------------+
+| Peso médio (kg)       | 117                  | 130                            |
++-----------------------+----------------------+--------------------------------+
+| IMC médio (kg/m²)     | 42,9                 | 47,5                           |
++-----------------------+----------------------+--------------------------------+
+| Altura média (m)      | 1,64                 | 1,65                           |
++-----------------------+----------------------+--------------------------------+
+| \% de mulheres        | 60,2% (3.133/5.202)  | 64,0% (2.627/4.102)            |
++-----------------------+----------------------+--------------------------------+
+| Período das consultas | 2016–2023            | 2016–2023                      |
++-----------------------+----------------------+--------------------------------+
+
+O segundo filtro selecionou apenas os indivíduos cuja idade era maior que 18 anos na primeira consulta registrada, criando um novo dataframe chamado `consultas_adults`.
+
+A tabela a seguir compara as características demográficas e antropométricas entre o dataframe `consultas_bmi` (pacientes com IMC ≥ 30 em pelo menos uma consulta) e o dataframe `consultas_adults` (pacientes adultos com IMC ≥ 30 em pelo menos uma consulta).
+
++------------------------------+--------------------------+------------------------------+
+| **Métrica**                  | **Antes:** consultas_bmi | **Depois:** consultas_adults |
++==============================+==========================+==============================+
+| Linhas (consultas)           | 4.102                    | 4.039                        |
++------------------------------+--------------------------+------------------------------+
+| Pacientes únicos (record_id) | 695                      | 684                          |
++------------------------------+--------------------------+------------------------------+
+| Idade média (anos)           | 45,7                     | 46,2                         |
++------------------------------+--------------------------+------------------------------+
+| Idade mínima (anos)          | 5,68                     | 18,0                         |
++------------------------------+--------------------------+------------------------------+
+| Mulheres, n (%)              | 2.627 (64,0%)            | 2.600 (64,4%)                |
++------------------------------+--------------------------+------------------------------+
+| Peso médio (kg)              | 130                      | 130                          |
++------------------------------+--------------------------+------------------------------+
+| IMC médio (kg/m²)            | 47,5                     | 47,6                         |
++------------------------------+--------------------------+------------------------------+
+| weight_kg faltante (n)       | 790                      | 784                          |
++------------------------------+--------------------------+------------------------------+
+| bmi faltante (n)             | 790                      | 784                          |
++------------------------------+--------------------------+------------------------------+
+| percent_weight_loss faltante | 1.384                    | 1.369                        |
++------------------------------+--------------------------+------------------------------+
+
+O terceiro filtro selecionou apenas os pacientes que tiveram pelo menos duas consultas médicas registradas durante o período de acompanhamento, criando um novo dataframe chamado `consultas_2_visits.`
+
+A tabela a seguir compara as características demográficas e antropométricas entre o dataframe `consultas_adults` (pacientes adultos com IMC ≥ 30 em pelo menos uma consulta) e o dataframe `consultas_2_visits` (pacientes adultos com IMC ≥ 30 em pelo menos uma consulta e com pelo menos duas consultas registradas).
+
++------------------------------+-----------------------------+--------------------------------+
+| **Métrica**                  | **Antes:** consultas_adults | **Depois:** consultas_2_visits |
++==============================+=============================+================================+
+| Linhas (consultas)           | 4.039                       | 3.929                          |
++------------------------------+-----------------------------+--------------------------------+
+| Pacientes únicos (record_id) | 684                         | 574                            |
++------------------------------+-----------------------------+--------------------------------+
+| Idade média (anos)           | 46,2                        | 46,3                           |
++------------------------------+-----------------------------+--------------------------------+
+| Idade mínima (anos)          | 18,0                        | 18,0                           |
++------------------------------+-----------------------------+--------------------------------+
+| Mulheres, n (%)              | 2.600 (64,4%)               | 2.523 (64,3%)                  |
++------------------------------+-----------------------------+--------------------------------+
+| Peso médio (kg)              | 130                         | 130                            |
++------------------------------+-----------------------------+--------------------------------+
+| IMC médio (kg/m²)            | 47,6                        | 47,6                           |
++------------------------------+-----------------------------+--------------------------------+
+| weight_kg faltante (n)       | 784                         | 784                            |
++------------------------------+-----------------------------+--------------------------------+
+| bmi faltante (n)             | 784                         | 784                            |
++------------------------------+-----------------------------+--------------------------------+
+| percent_weight_loss faltante | 1.369                       | 1.259                          |
++------------------------------+-----------------------------+--------------------------------+
+
+# Resultados
+
+Na primeira consulta foram avaliados 574 pacientes, com idade média de 44 anos (IC95%: 43–45), variando entre 18 e 84 anos. O peso médio foi de 133,8 kg (IC95%: 130,4–137,2) e a altura média de 1,65 m (IC95%: 1,64–1,66), resultando em um IMC médio de 48,9 kg/m² (IC95%: 47,8–50,0). Os valores mínimos e máximos observados foram, respectivamente, 59,7 e 268,7 kg para peso; 1,15 e 1,91 m para altura; e 26,9 e 91,5 kg/m² para IMC. Houve ausência de dados em 17,2% das observações de peso e IMC. A maioria dos pacientes era do sexo feminino (65,3%), enquanto 34,7% eram do sexo masculino. Quanto à etnia, predominou a categoria branca (74,6%), seguida de parda (16,6%), preta (8,4%) e casos classificados como “verificar” (0,5%).
+
++--------------+-------+----------------+----------------+--------+--------+---------+--------+---------+
+| Variável     | Média | IC95% Inferior | IC95% Superior | Mínimo | Máximo | N total | N (NA) | \% (NA) |
++:=============+:=====:+:==============:+:==============:+:======:+:======:+:=======:+:======:+:=======:+
+| Idade (anos) | 44    | 43             | 45             | 18     | 84     | 574     | 0      | 0%      |
++--------------+-------+----------------+----------------+--------+--------+---------+--------+---------+
+| Peso (kg)    | 133,8 | 130,4          | 137,2          | 59,7   | 268,7  | 574     | 99     | 17,2%   |
++--------------+-------+----------------+----------------+--------+--------+---------+--------+---------+
+| Altura (m)   | 1,6   | 1,6            | 1,7            | 1,1    | 1,9    | 574     | 0      | 0%      |
++--------------+-------+----------------+----------------+--------+--------+---------+--------+---------+
+| IMC (kg/m²)  | 48,9  | 47,8           | 50             | 26,9   | 91,5   | 574     | 99     | 17,2%   |
++--------------+-------+----------------+----------------+--------+--------+---------+--------+---------+
+
+| Variável | Categoria      | N total | Proporção (%) |
+|:---------|:---------------|:-------:|:-------------:|
+| Sexo     | F              |   375   |     65,3      |
+| Sexo     | M              |   199   |     34,7      |
+| Sexo     | NA             |    0    |      0,0      |
+| Etnia    | Branco         |   428   |     74,6      |
+| Etnia    | Mulato (Pardo) |   95    |     16,6      |
+| Etnia    | Preto          |   48    |      8,4      |
+| Etnia    | VERIFICAR      |    3    |      0,5      |
+| Etnia    | NA             |    0    |      0,0      |
+
+## Indicadores de atendimento
+
+O número de consultas por paciente apresentou ampla variação, oscilando entre 2 e 26 atendimentos durante o período de seguimento. A distribuição mostrou-se assimétrica à direita, com maior concentração nas faixas iniciais: 25% dos pacientes realizaram até 3 consultas, enquanto a mediana foi de 5 consultas e 75% tiveram até 9 consultas. Apenas 5% ultrapassaram 17 atendimentos, caracterizando um grupo minoritário submetido a acompanhamento mais frequente. A tabela de frequências indica que a distribuição é assimétrica à direita: a maioria concentrou-se entre 2 e 9 consultas (cerca de 75% do total), enquanto poucos pacientes atingiram números elevados de atendimentos (acima de 20 consultas, menos de 3%). O gráfico de distribuição acumulada (ECDF) ilustra de forma clara essa tendência, evidenciando que metade dos pacientes foi acompanhada com até cinco consultas e que a curva se estabiliza progressivamente a partir de 10 atendimentos, indicando que casos de seguimento prolongado foram menos comuns.
+
+> ![Legenda: O gráfico ECDF mostra no eixo X o número de consultas por paciente e no eixo Y a proporção acumulada de pacientes que atingiram até aquele valor. Observa-se que cerca de **30% dos pacientes tiveram até 3 consultas**, aproximadamente **50% até 5 consultas (mediana)**, e **75% até 9 consultas (percentil 75)**. A curva se aproxima de 100% em torno de 26 consultas, que é o valor máximo observado. Esse tipo de gráfico facilita a visualização dos **percentis**: basta projetar horizontalmente a linha desejada (25%, 50%, 75%, etc.) até interceptar a curva e ler no eixo X o valor correspondente de consultas.](images/clipboard-1100522944.png)
+
+> Tabela. Número de consultas por paciente — mediana, percentis (5, 25, 75, 95) e máximo.
+
+| medida  | valor |
+|:--------|:------|
+| p5      | 2     |
+| p25     | 3     |
+| mediana | 5     |
+| p75     | 9     |
+| p95     | 17    |
+| max     | 26    |
+
+> Tabela: Tempo de seguimento em dias, semanas, meses e anos (mediana, IQR, máximo)
+
+| tempo   | mediana | IQR   | max     |
+|:--------|:--------|:------|:--------|
+| dias    | 563,5   | 971,2 | 2.800,0 |
+| semanas | 80,5    | 138,8 | 400,0   |
+| meses   | 18,5    | 31,9  | 92,0    |
+| anos    | 1,5     | 2,7   | 7,7     |
+
+> Tabela: Tempo médio entre consultas em dias, semanas, meses e anos (mediana, IQR, máximo)
+
+| tempo   | mediana | IQR   | max    |
+|:--------|:--------|:------|:-------|
+| dias    | 120,68  | 68,78 | 777,00 |
+| semanas | 17,24   | 9,82  | 111,00 |
+| meses   | 3,96    | 2,26  | 25,53  |
+| anos    | 0,33    | 0,19  | 2,13   |
+
+Resultado. O tempo de seguimento dos pacientes apresentou grande amplitude, variando de algumas semanas a mais de 7 anos. A mediana foi de 18,5 meses (IQR: 31,9), equivalente a 1,5 anos (IQR: 2,7), com máximo de 7,7 anos de acompanhamento. Esse resultado indica que metade dos pacientes foi acompanhada por até um ano e meio, enquanto uma parcela menor permaneceu em seguimento prolongado por vários anos. O intervalo médio entre consultas também variou substancialmente. A mediana foi de aproximadamente 120 dias (IQR: 68,8), o que corresponde a cerca de 4 meses entre atendimentos. O percentil superior mostra que alguns pacientes chegaram a intervalos médios de até 777 dias (mais de 2 anos) entre consultas, sugerindo padrões heterogêneos de acompanhamento. Em conjunto, esses achados mostram que a maioria dos pacientes foi acompanhada em intervalos regulares de poucos meses, porém com expressiva variação tanto na duração total do seguimento quanto na frequência dos atendimentos.
+
+Discussão. Os achados referentes ao tempo de seguimento e ao intervalo médio entre consultas sugerem um padrão heterogêneo de acompanhamento. A maioria dos pacientes manteve retornos em intervalos regulares de 3 a 6 meses, consistentes com a prática clínica de monitoramento contínuo em programas de tratamento da obesidade. Entretanto, nos casos de seguimento mais longo observou-se um aumento progressivo na variabilidade, incluindo pacientes com intervalos superiores a 12 meses entre consultas. Esse comportamento pode refletir múltiplos fatores: melhora clínica inicial que reduziu a necessidade de acompanhamento frequente; dificuldades logísticas de comparecimento, como barreiras de acesso e disponibilidade de serviços; ou ainda abandono parcial do acompanhamento formal, com manutenção apenas de retornos ocasionais. A presença desses dois perfis distintos — pacientes com consultas regulares e outros com retornos esparsos ao longo do tempo — tem implicações metodológicas e clínicas. Do ponto de vista analítico, sugere cautela na interpretação das trajetórias de peso, já que o espaçamento desigual pode introduzir vieses na avaliação da evolução longitudinal. Do ponto de vista clínico, evidencia a importância de estratégias que promovam maior adesão ao acompanhamento, sobretudo em seguimentos prolongados, para garantir a continuidade do cuidado e a detecção precoce de complicações associadas à obesidade.
+
+> ![Legenda: Relação entre o tempo total de seguimento (anos) e o intervalo médio entre consultas (meses). Cada ponto representa um paciente; a linha azul indica a tendência linear. Observa-se que, embora a maioria mantenha intervalos regulares de até 6 meses, em seguimentos prolongados surgem casos com retornos mais espaçados, chegando a mais de um ano. O gráfico de dispersão mostra a relação entre o tempo total de seguimento (eixo X, em anos) e o intervalo médio entre consultas (eixo Y, em meses) para cada paciente. Cada ponto representa um indivíduo, e a linha azul corresponde à tendência linear ajustada.](images/clipboard-4192108165.png)
+
+### Proporção de indivíduos com peso final maior que o inicial.
+
+Tabela 1.6 — Proporção de indivíduos com peso final maior que o inicial
+
+| N total | N com ganho | Proporção | IC95% inferior | IC95% superior |
+|---------|-------------|-----------|----------------|----------------|
+| 574     | 153         | 26,7%     | 23,1%          | 30,5%          |
+
+Resultado. Entre os 574 indivíduos acompanhados, 153 (26,7%; IC95%: 23,1–30,5%) apresentaram peso final maior do que o peso inicial. Isso indica que aproximadamente um quarto dos pacientes teve ganho ponderal ao longo do período de seguimento, enquanto a maioria (73.3%) apresentou peso final igual ou inferior ao inicial.
+
+Discussão. Do ponto de vista clínico, esse achado sugere que, embora a maior parte dos pacientes tenha conseguido manter ou reduzir o peso em relação ao início do acompanhamento, ainda existe uma proporção considerável que apresentou reganho ponderal. Esse fenômeno é consistente com a literatura, que aponta a dificuldade de manutenção da perda de peso em longo prazo, especialmente em contextos de obesidade, e reforça a importância de estratégias de acompanhamento contínuo e intervenções sustentadas para prevenção do reganho.
+
+### Proporção de consultas (a partir da segunda) com ganho ou perda de peso em relação à anterior/baseline.
+
+> Tabela: Proporção de consultas (a partir da segunda) com ganho, perda ou estabilidade de peso
+
++-------------------------------------------+-------------------------+-------------------------------------------------+-------------------------------------------------+----------------------------------------------+
+| Definição                                 | Consultas elegíveis (n) | Ganho, n (%) \[IC95%\]                          | Perda, n (%) \[IC95%\]                          | Estável, n (%) \[IC95%\]                     |
++:==========================================+========================:+:================================================+:================================================+:=============================================+
+| Em relação à consulta anterior            | 2328                    | 1026 (44.1%) — ganho (44.1%; IC95% 42.1%–46.1%) | 1243 (53.4%) — perda (53.4%; IC95% 51.4%–55.4%) | 59 (2.5%) — estável (2.5%; IC95% 2.0%–3.3%)  |
++-------------------------------------------+-------------------------+-------------------------------------------------+-------------------------------------------------+----------------------------------------------+
+| Em relação à primeira consulta (baseline) | 2670                    | 954 (35.7%) — ganho (35.7%; IC95% 33.9%–37.6%)  | 1594 (59.7%) — perda (59.7%; IC95% 57.8%–61.5%) | 122 (4.6%) — estável (4.6%; IC95% 3.8%–5.4%) |
++-------------------------------------------+-------------------------+-------------------------------------------------+-------------------------------------------------+----------------------------------------------+
+
+Resultados. Entre as consultas analisadas a partir da segunda visita, observou-se que 44,1% (IC95% 42,1–46,1) apresentaram ganho de peso em relação à consulta imediatamente anterior, enquanto 53,4% (IC95% 51,4–55,4) mostraram perda de peso e 2,5% (IC95% 2,0–3,3) permaneceram estáveis. Quando a referência foi a primeira consulta (baseline), os resultados evidenciaram uma tendência acumulada diferente: 35,7% (IC95% 33,9–37,6) das consultas estavam associadas a ganho de peso em relação ao basal, 59,7% (IC95% 57,8–61,5) a perda de peso, e 4,6% (IC95% 3,8–5,4) mantiveram peso estável. Portanto, embora a análise visita a visita revele flutuações mais frequentes de ganho e perda, a comparação com o peso inicial sugere que, no seguimento acumulado, predominou a perda de peso.
+
+Discussão. A análise longitudinal de perda de peso mostrou padrões distintos conforme o critério de referência utilizado. Considerando-se a consulta imediatamente anterior, a evolução do peso revelou alta variabilidade, com proporções semelhantes de consultas com ganho e perda, refletindo as oscilações individuais e possivelmente influências transitórias de fatores comportamentais, clínicos ou mesmo variações técnicas de medida. Por outro lado, quando o peso inicial foi adotado como referência, observou-se uma tendência global de perda de peso ao longo do seguimento, evidenciada por maior proporção de consultas classificadas como perda em relação ao basal. Este resultado sugere que, apesar das flutuações entre visitas, o acompanhamento clínico contribuiu para um saldo positivo na redução de peso em termos cumulativos. A diferença entre os dois enfoques analíticos é relevante. A comparação visita a visita é mais sensível a pequenas variações, que podem representar tanto mudanças reais quanto ruído de mensuração. Já a comparação acumulada com o peso basal tende a capturar melhor o efeito do seguimento como um todo, sendo clinicamente mais intuitiva para avaliar impacto do tratamento. Do ponto de vista clínico, a predominância de perda de peso acumulada sugere benefício do acompanhamento, mas a presença consistente de oscilações reforça a necessidade de estratégias para manutenção do peso e prevenção do reganho.
+
+Tabela — Direção da variação de peso por sexo
+
+| Sexo | Direção | n   | Total de consultas | Proporção (IC95%)        |
+|------|---------|-----|--------------------|--------------------------|
+| F    | Estável | 33  | 1504               | 2,2% (IC95%: 1,6–3,1)    |
+| F    | Ganho   | 665 | 1504               | 44,2% (IC95%: 41,7–46,7) |
+| F    | Perda   | 806 | 1504               | 53,6% (IC95%: 51,1–56,1) |
+| M    | Estável | 26  | 824                | 3,2% (IC95%: 2,2–4,6)    |
+| M    | Ganho   | 361 | 824                | 43,8% (IC95%: 40,5–47,2) |
+| M    | Perda   | 437 | 824                | 53,0% (IC95%: 49,6–56,4) |
+
+Tabela — Comparação de proporções entre sexos
+
++----------+----------------+----------------+-----------+----------------+----------+
+| Direção  | Estimativa (F) | Estimativa (M) | Diferença | IC95%          | p-valor  |
++==========+================+================+===========+================+==========+
+| Perda    | 0,536          | 0,530          | –0,006    | –0,037 – 0,048 | 0,797    |
++----------+----------------+----------------+-----------+----------------+----------+
+| Ganho    | 0,442          | 0,438          | –0,004    | –0,038 – 0,046 | 0,851    |
++----------+----------------+----------------+-----------+----------------+----------+
+
+Resultados. Entre as consultas a partir da 2ª visita, a distribuição por sexo foi semelhante quando a referência é a consulta anterior. Mulheres (n = 1.504 consultas): ganho 44,2% (IC95% 41,7–46,7), perda 53,6% (IC95% 51,1–56,1), estável 2,2% (IC95% 1,6–3,1). Homens (n = 824 consultas): ganho 43,8% (IC95% 40,5–47,2), perda 53,0% (IC95% 49,6–56,4), estável 3,2% (IC95% 2,2–4,6). Os IC95% se sobrepõem amplamente entre os sexos para ganho e perda, sugerindo ausência de diferença relevante no padrão de variação visita‑a‑visita.
+
+Discussão. A estratificação por sexo indica padrões muito semelhantes de ganho e perda entre visitas consecutivas, com sobreposição dos IC95% e, quando testado, ausência de diferença estatisticamente significativa (prop.test) nas proporções de perda/ganho entre mulheres e homens. Esses achados sugerem que, no curto intervalo entre consultas, o sexo não é um determinante importante das oscilações de peso. Em termos clínicos, isso reforça a necessidade de estratégias de manutenção e adesão independentes do sexo, focalizando fatores comportamentais e de seguimento que possam modular as variações visita‑a‑visita.
+
+## Análises pelo tempo de seguimento
+
+### Comparar a porcentagem máxima de perda de peso
+
+Resultado: Após ajuste por sexo, etnia, idade e IMC inicial, o tempo de seguimento mostrou associação significativa com a perda máxima de peso. Pacientes acompanhados por mais de 12 meses apresentaram, em média, 4,7 pontos percentuais a mais de perda máxima em relação aos que tiveram seguimento de até 12 meses (IC95%: 3,5–6,0; p\<0,001). Entre as variáveis de ajuste, apenas o IMC inicial se associou significativamente à perda máxima, indicando que indivíduos com maior IMC basal apresentaram perdas percentuais mais expressivas. Sexo, idade e etnia não mostraram associação estatisticamente significativa.
+
+Tabela — Associação entre variáveis demográficas, clínicas e tempo de seguimento com a perda máxima de peso (%)
+
+| Variável              | Estimativa (β) | IC95%         | p-valor |
+|-----------------------|----------------|---------------|---------|
+| Intercepto            | –5,17          | –8,85 – –1,50 | 0,006   |
+| Seguimento \>12m      | +4,74          | 3,45 – 6,02   | \<0,001 |
+| Sexo (M)              | +0,10          | –1,22 – 1,42  | 0,89    |
+| Etnia: Mulato (Pardo) | –0,56          | –2,27 – 1,14  | 0,52    |
+| Etnia: Preto          | –1,72          | –4,00 – 0,56  | 0,14    |
+| Etnia: VERIFICAR      | +0,09          | –9,47 – 9,65  | 0,99    |
+| Idade inicial (anos)  | +0,02          | –0,03 – 0,07  | 0,45    |
+| IMC inicial (kg/m²)   | +0,14          | 0,08 – 0,19   | \<0,001 |
+
+Resultado. A média ajustada de perda máxima foi de 1,8% (IC95%: -0,8 – 4,4) entre os pacientes acompanhados por até 12 meses e de 6,6% (IC95%: 4,0 – 9,1) entre aqueles acompanhados por mais de 12 meses. A diferença entre os grupos foi estatisticamente significativa (p\<0,001), indicando que um maior tempo de seguimento esteve associado a maiores perdas percentuais de peso, independentemente de sexo, etnia, idade e IMC inicial.
+
++---------------------+---------------------------+-------------+--------------+------------+
+| Tempo de seguimento | Perda máxima ajustada (%) | Erro padrão | IC95%        | p-valor    |
++=====================+===========================+=============+==============+============+
+| ≤12m                | 1,82                      | 1,32        | -0,78 – 4,42 | 0,170      |
++---------------------+---------------------------+-------------+--------------+------------+
+| \>12m               | 6,56                      | 1,29        | 4,01 – 9,10  | \<0,001    |
++---------------------+---------------------------+-------------+--------------+------------+
+
+> Figura: Estimativas ajustadas de perda máxima de peso (%) por tempo de seguimento, com IC95%. ![](images/clipboard-1916708092.png)
+>
+> Legenda. Após ajuste por sexo, etnia, idade e IMC inicial, a média ajustada de perda máxima foi de 1,8% (IC95%: –0,8 a 4,4) no grupo com seguimento ≤12 meses e de 6,6% (IC95%: 4,0 a 9,1) no grupo com seguimento \>12 meses. A diferença entre os grupos foi de 4,7 pontos percentuais (IC95%: 3,5–6,0; p \< 0,001), indicando que maior tempo de seguimento esteve associado a perdas percentuais mais expressivas de peso.
+
+### Avaliar associação da perda de peso máxima com variáveis demográficas
+
+Resultado. O modelo de regressão linear múltipla mostrou que, após ajuste por sexo, etnia, idade e IMC inicial, **maior IMC inicial** (β = 0,16; IC95%: 0,09–0,23; p \< 0,001) e **maior número de consultas** (β = 0,65; IC95%: 0,39–0,90; p \< 0,001) estiveram independentemente associados a uma maior perda máxima de peso relativa ao basal. Variáveis como sexo, etnia e idade não apresentaram associações estatisticamente significativas. Observou-se ainda uma tendência de associação positiva entre o **tempo de seguimento** e a perda máxima (β = 0,01; IC95%: –0,0004–0,03; p = 0,056), sem atingir significância convencional. Em termos clínicos, os achados reforçam que indivíduos com **IMC inicial mais elevado** e que comparecem a **maior número de consultas** tendem a alcançar maiores magnitudes de perda percentual de peso.
+
+| Variável                | β (Estimativa) | IC95% (LI – LS) | p-valor |
+|-------------------------|---------------:|----------------:|--------:|
+| Intercepto              |          −7,73 |   −11,3 – −4,20 | \<0,001 |
+| Sexo (M vs F)           |          −0,03 |    −1,28 – 1,22 |    0,96 |
+| Etnia (Pardo vs Branco) |          −0,26 |    −1,87 – 1,36 |    0,76 |
+| Etnia (Preto vs Branco) |          −1,80 |    −3,95 – 0,37 |    0,10 |
+| Etnia (VERIFICAR)       |           0,38 |    −0,84 – 1,60 |    0,54 |
+| Idade inicial (anos)    |           0,01 |    −0,04 – 0,06 |    0,62 |
+| IMC inicial (kg/m²)     |           0,16 |     0,09 – 0,23 | \<0,001 |
+| Tempo de seguimento (m) |           0,01 |  −0,0004 – 0,03 |   0,056 |
+| Nº de consultas         |           0,65 |     0,39 – 0,90 | \<0,001 |
+
+### Momento em que cada indivíduo atingiu ≥5% de perda em relação ao peso inicial
+
+Resultados. Entre os 574 pacientes acompanhados, apenas 221 (38,5%) atingiram uma perda de peso ≥ 5% em relação ao peso inicial durante o seguimento. O tempo mediano até alcançar essa meta foi de aproximadamente 10,1 meses (IIQ 15,0), ocorrendo tipicamente na 4ª consulta (IIQ 3).
+
+> Tabela: Resumo do momento em que os pacientes atingiram pela primeira vez perda de peso ≥5% em relação ao peso inicial
+
++--------------------+--------------------+---------------+-----------------+-------------+--------------------+----------------+
+| Total de pacientes | Nº que atingiu ≥5% | Proporção (%) | Mediana (meses) | IQR (meses) | Mediana (consulta) | IQR (consulta) |
++===================:+===================:+==============:+================:+============:+===================:+===============:+
+| 574                | 221                | 0.3850174     | 10.12658        | 14.95972    | 4                  | 3              |
++--------------------+--------------------+---------------+-----------------+-------------+--------------------+----------------+
+
+### Subgrupo com perda significativa (≥ 5%)
+
+Resultados. Entre os pacientes que alcançaram a meta de perda ≥5% (n = 221), o tempo mediano até o alcance foi de 10,1 meses (IIQ 15,0), correspondendo em média à 4ª consulta (IIQ 3).
+
+> Tabela: Medidas de frequência de reganho de peso após atingir perda ≥5%
+
++-----------------------+-------------+---------------+------------------------+-----------------------+------------------------+-----------------------------+
+| Pacientes com ≥5% (n) | Reganho (n) | Proporção (%) | Taxa (100 pessoa-anos) | Manutenção 6m (KM, %) | Manutenção 12m (KM, %) | Mediana até reganho (meses) |
++======================:+============:+==============:+=======================:+======================:+=======================:+============================:+
+| 221                   | 83          | 37.6          | 33.5                   | 83                    | 64.4                   | 24.2                        |
++-----------------------+-------------+---------------+------------------------+-----------------------+------------------------+-----------------------------+
+
+Resultados. Entre os 221 indivíduos que atingiram perda de peso ≥5%, **37,6% apresentaram reganho** em algum momento subsequente, caracterizado por voltar a níveis inferiores a esse limiar em relação ao basal. A **taxa de incidência do primeiro reganho** foi de 33,5 por 100 pessoa-anos. A probabilidade de manutenção da perda ≥5% foi de **83% aos 6 meses** e **64,4% aos 12 meses** de seguimento. O **tempo mediano até o reganho** foi de 24,2 meses, indicando que, em média, os pacientes conseguiram manter a perda por mais de dois anos antes de recair.
+
+> Tabela: Magnitude do reganho de peso após atingir perda ≥5%
+
++----------------------+-----------------------------+-----------------------------+--------------------------------+
+| n com ≥5% (subgrupo) | Reganho ≥50% do perdido (n) | Reganho ≥50% do perdido (%) | Tempo mediano até ≥50% (meses) |
++=====================:+============================:+============================:+===============================:+
+| 221                  | 66                          | 29.9                        | 17.2                           |
++----------------------+-----------------------------+-----------------------------+--------------------------------+
+
+Entre os 221 indivíduos que alcançaram perda de peso ≥5%, 29,9% apresentaram reganho substancial, definido como recuperar pelo menos 50% do peso perdido em relação ao nadir. O tempo mediano até esse reganho foi de 17,2 meses, indicando que, mesmo entre aqueles que recuperaram parte relevante do peso, em média levaram mais de um ano para perder ao menos metade do benefício obtido.
+
+> Tabela: Oscilações e tempo em manutenção após atingir perda ≥5%
+
+| Oscilações (n) | Tempo em manutenção (%) |
+|:---------------|:------------------------|
+| 0 (0–1)        | 78 (44–100)             |
+
+Resultados. O número de oscilações (entrar e sair do limiar de 5%) foi baixo: mediana de 0 (IIQ 0–1). - Em termos de tempo, os pacientes passaram 78% (IIQ 44–100%) do seguimento mantendo ≥5% de perda. Esses achados sugerem que, embora uma parte dos pacientes reganhe peso após atingir a meta de ≥5%, a maioria consegue manter esse benefício por um tempo prolongado. Aproximadamente 2 em cada 3 mantêm a perda em 12 meses, e o tempo até reganho substancial (≥50% do perdido) é relativamente longo (mediana 17 meses). O padrão de oscilação foi pouco frequente, reforçando que a trajetória predominante é de manutenção estável, ao menos durante parte importante do acompanhamento.
+
+**Resultado combinado das 3 análises**. Entre os 221 pacientes que atingiram perda ≥5% em relação ao peso inicial, 83 (37,6%) apresentaram reganho em algum momento do seguimento, resultando em uma taxa de incidência de 33,5 por 100 pessoa-anos. A probabilidade de manutenção da perda ≥5% foi de 83% aos 6 meses e de 64,4% aos 12 meses, com tempo mediano até o reganho de 24,2 meses. Quando considerada a magnitude do reganho em relação ao nadir, 66 indivíduos (29,9%) recuperaram ≥50% do peso previamente perdido, com tempo mediano de 17,2 meses até esse evento. O padrão longitudinal mostrou baixa frequência de oscilações em torno do limiar de 5% (mediana 0; IIQ 0–1), e a proporção do tempo em que os pacientes permaneceram com perda ≥5% foi elevada (mediana 78%; IIQ 44–100%). Esses resultados indicam que, embora parte dos pacientes experimente reganho, a maioria consegue manter a perda clinicamente relevante por períodos prolongados, com relativa estabilidade durante o acompanhamento.
+
+> Tabela: Medidas de reganho de peso após atingir perda ≥5%
+
+| Indicador                                           | Resultado     |
+|-----------------------------------------------------|---------------|
+| Pacientes com perda ≥5% (n)                         | 221           |
+| Reganho (queda \<5%) n (%)                          | 83 (37,6%)    |
+| Taxa de incidência (100 pessoa-anos)                | 33,5          |
+| Manutenção ≥5% em 6 meses (KM, %)                   | 83%           |
+| Manutenção ≥5% em 12 meses (KM, %)                  | 64,4%         |
+| Tempo mediano até reganho \<5% (meses)              | 24,2          |
+| Reganho ≥50% do peso perdido (n, %)                 | 66 (29,9%)    |
+| Tempo mediano até reganho ≥50% (meses)              | 17,2          |
+| Oscilações em torno de 5% (mediana, IIQ)            | 0 (0–1)       |
+| Proporção do tempo em manutenção ≥5% (mediana, IIQ) | 78% (44–100%) |
+
+> ![Legenda. A curva de Kaplan–Meier para manutenção da perda ≥5% mostra uma probabilidade elevada de sustentar a meta de perda de 5% nos primeiros meses após o alcance, com queda progressiva ao longo do seguimento. Aproximadamente 83% dos pacientes mantinham a perda em 6 meses e 64% em 12 meses. A mediana do tempo até o reganho foi de 24,2 meses, indicando que metade dos pacientes manteve o benefício clínico por pelo menos dois anos. A curva evidencia ainda que, embora haja declínio gradual, uma proporção considerável de indivíduos preservou a perda ≥5% até três anos de acompanhamento.](images/clipboard-991305450.png)
+
+> ![Legenda: Distribuição do tempo até o primeiro reganho (\<5%) entre os pacientes que atingiram perda ≥5%. O violino representa a densidade da distribuição, o boxplot resume a mediana e o intervalo interquartil, e os pontos mostram observações individuais. A linha tracejada vermelha destaca a mediana do tempo até o reganho (≈ 9 meses).](images/clipboard-191272522.png)
+
+Resultados. Entre os pacientes que atingiram a meta de perda ≥5% e posteriormente apresentaram reganho (queda para \<5%), o tempo mediano até o evento foi de aproximadamente 9 meses, com ampla variabilidade entre indivíduos. Esse resultado contrasta com a estimativa baseada na análise de sobrevivência de toda a coorte (incluindo censura), na qual a mediana do tempo até o reganho foi de 24,2 meses. Em conjunto, os achados indicam que, embora uma parcela expressiva mantenha a perda clinicamente relevante por períodos prolongados, o reganho tende a ocorrer de forma relativamente precoce entre aqueles suscetíveis.
+
+Discussão (comparação Kaplan-Meier vs. tempo mediano do evento naqueles em que o evento de reganho de peso foi observado). Entre os pacientes que atingiram perda ≥5%, o tempo mediano até o reganho, considerando toda a coorte e incluindo a censura dos indivíduos que não apresentaram o evento, foi de 24,2 meses (estimado pelo modelo de Kaplan–Meier). Esse valor indica o ponto em que metade da amostra ainda mantinha a perda ≥5%, refletindo a trajetória global do grupo, inclusive daqueles que nunca perderam o benefício. Por outro lado, ao analisar apenas os pacientes que efetivamente apresentaram reganho, o tempo mediano até o evento foi bem menor, cerca de 9 meses (IIQ: 5–18). Essa segunda métrica revela em quanto tempo, em média, o reganho ocorre entre os suscetíveis. Em conjunto, os achados mostram que, embora uma parcela expressiva mantenha a perda clinicamente relevante por períodos prolongados, o reganho tende a se manifestar precocemente nos indivíduos vulneráveis.
+
+> Tempo até reganho (\<5%): histograma dos eventos e marcações dos censurados. ![Legenda. Distribuição do tempo até o reganho (\<5%) entre os pacientes que atingiram perda ≥5%. As barras indicam os eventos de reganho e os traços na base representam os tempos de censura (indivíduos que não reganharam até a última observação).](images/clipboard-175911860.png)
+
+Resultados. O histograma dos tempos até o reganho (\<5%) mostra maior concentração de eventos nos primeiros 12 a 18 meses após atingir a meta, mas também ocorrência esporádica ao longo de períodos mais prolongados. Os traços na base indicam o seguimento dos pacientes que permaneceram censurados, evidenciando que parte deles manteve a perda ≥5% por até 5–6 anos sem apresentar reganho.
+
+### No subgrupo com perda ≥5%, comparar o momento em que a meta de perda de 5% foi alcançada.
+
+> Distribuição do primeiro alcance de perda ≥5% por janela de tempo entre os que atingiram a meta
+
+| Janela | n   | N total | Proporção | IC95% inferior | IC95% superior |
+|--------|-----|---------|-----------|----------------|----------------|
+| ≤6m    | 67  | 221     | 0.303     | 0.243          | 0.368          |
+| 6–12m  | 63  | 221     | 0.285     | 0.227          | 0.349          |
+| 12–18m | 29  | 221     | 0.131     | 0.090          | 0.183          |
+| 18–24m | 16  | 221     | 0.072     | 0.042          | 0.115          |
+| 24–30m | 10  | 221     | 0.045     | 0.022          | 0.082          |
+| 30–36m | 8   | 221     | 0.036     | 0.016          | 0.070          |
+| \>36m  | 28  | 221     | 0.127     | 0.086          | 0.178          |
+
+Resultados. Mais da metade dos pacientes respondeu em até 12 meses (58,8%), com maior concentração nos primeiros 6 meses (30,3%). Entretanto, uma proporção não desprezível (≈41,2%) atingiu a meta após 12 meses, incluindo 12,7% somente após 36 meses de seguimento.
+
+Discussão. Esses achados sugerem que, embora o período de até 12 meses seja o mais produtivo para identificar respondedores precoces, ainda há uma parcela significativa de respondedores tardios que podem se beneficiar de um seguimento prolongado. Do ponto de vista clínico e de gestão ambulatorial, isso sugere que uma alta precoce baseada apenas na ausência de resposta em 12 meses poderia descartar pacientes com chance real de atingir benefício clínico relevante em períodos posteriores.
+
+> Distribuição do primeiro alcance de perda ≥5% por janela de tempo entre os que atingiram a meta (proporção e IC95%). ![Legenda. Distribuição do primeiro alcance de perda ≥5% por janelas de tempo entre os pacientes que atingiram a meta. As barras representam a proporção (%) de respondedores em cada intervalo, com intervalos de confiança de 95%. Os valores sobre as colunas indicam a proporção e o número absoluto de pacientes (n) em cada grupo.](images/clipboard-1131669133.png)
+
+### Probabilidade condicional de atingir ≥5% em janelas sucessivas, dado que ainda não atingiu no início da janela
+
+> Probabilidade condicional de atingir perda ≥5% em janelas sucessivas, entre os que ainda não atingiram até o início da janela.
+>
+> +------------+------------------------+-----------------------+--------------------+--------------------+
+> | \          | Em risco no início (n) | Prob. condicional (%) | IC95% inferior (%) | IC95% superior (%) |
+> | Janela     |                        |                       |                    |                    |
+> +:===========+:======================:+:=====================:+:==================:+:==================:+
+> | ≤6m        | 574                    | 12.760                | 10.056             | 15.543             |
+> +------------+------------------------+-----------------------+--------------------+--------------------+
+> | 6–12m      | 415                    | 17.014                | 13.317             | 20.939             |
+> +------------+------------------------+-----------------------+--------------------+--------------------+
+> | 12–18m     | 271                    | 11.609                | 7.732              | 15.791             |
+> +------------+------------------------+-----------------------+--------------------+--------------------+
+> | 18–24m     | 200                    | 8.557                 | 4.662              | 12.722             |
+> +------------+------------------------+-----------------------+--------------------+--------------------+
+> | 24–30m     | 157                    | 7.089                 | 3.031              | 11.424             |
+> +------------+------------------------+-----------------------+--------------------+--------------------+
+> | 30–36m     | 115                    | 7.586                 | 3.054              | 13.057             |
+> +------------+------------------------+-----------------------+--------------------+--------------------+
+> | \>36m      | 91                     | 45.821                | 31.061             | 61.479             |
+> +------------+------------------------+-----------------------+--------------------+--------------------+
+
+Resultados. A probabilidade condicional de atingir perda ≥5% variou ao longo das janelas de seguimento. Nos primeiros 6 meses, 12,8% dos pacientes alcançaram a meta (IC95%: 10,1–15,5). Entre aqueles que não haviam atingido até então, a chance de alcançá-la entre 6–12 meses foi de 17,0% (IC95%: 13,3–20,9). Já nos intervalos subsequentes, as probabilidades condicionais foram menores: 11,6% (IC95%: 7,7–15,8) entre 12–18 meses, 8,6% (IC95%: 4,7–12,7) entre 18–24 meses, 7,1% (IC95%: 3,0–11,4) entre 24–30 meses e 7,6% (IC95%: 3,1–13,1) entre 30–36 meses. No grupo que permaneceu sem resposta até os \>36 meses, a probabilidade de atingir a perda mínima clínica foi de 45,8% (IC95%: 31,1–61,5). Esses resultados indicam que a maior parte dos respondedores é identificada até os 12 meses, mas há também um subgrupo menor de respondedores tardios, inclusive após longos períodos de acompanhamento.
+
+> Probabilidade condicional de atingir ≥5% por janelas sucessivas, com IC95% bootstrap (B=2000), condicionada a não ter atingido no início de cada janela. ![Legenda. Probabilidade condicional de atingir perda ≥5% em janelas sucessivas de tempo, condicionada a não ter atingido a meta no início da janela. As barras representam as estimativas pontuais e as linhas verticais os intervalos de confiança de 95% (bootstrap, B=2000). Observa-se maior probabilidade nos primeiros 12 meses e novamente após os 36 meses de acompanhamento.](images/clipboard-137657733.png)
+
+### Comparação da perda de peso entre os diferentes tempos de seguimento
+
+> Tabela — Perda máxima de peso (%) segundo janelas de tempo de seguimento
+>
+> | Janela | n   | Mediana (%) | IC95% inferior | IC95% superior |
+> |--------|-----|-------------|----------------|----------------|
+> | ≤6m    | 67  | 9,85        | 8,01           | 11,3           |
+> | 6–12m  | 63  | 10,0        | 8,14           | 12,1           |
+> | 12–18m | 29  | 10,1        | 7,44           | 12,7           |
+> | 18–24m | 16  | 7,63        | 6,10           | 11,9           |
+> | 24–30m | 10  | 7,87        | 5,88           | 13,9           |
+> | 30–36m | 8   | 9,43        | 6,92           | 12,4           |
+> | \>36m  | 28  | 9,76        | 7,76           | 13,3           |
+
+Resultado. A análise da perda máxima de peso (%) ao longo do seguimento, estratificada pela janela em que o paciente atingiu pela primeira vez ≥5%, mostrou que as medianas foram semelhantes entre os grupos. O teste de Kruskal–Wallis não identificou diferenças estatisticamente significativas entre as janelas (χ²=2,32; gl=6; p=0,888).
+
+Interpretação: independentemente do momento em que os pacientes alcançaram a perda inicial de ≥5%, a perda máxima subsequente foi semelhante entre os grupos, sugerindo que o padrão de resposta em termos de perda máxima é relativamente constante, seja para respondedores precoces ou tardios.
+
+> Perda máxima (%) ao longo do seguimento, estratificada pela janela do primeiro alcance de ≥5% (mediana e IC95% bootstrap). ![Legenda. Perda máxima de peso (%) ao longo do seguimento, estratificada pela janela em que ocorreu o primeiro alcance de perda ≥5%. As barras representam as medianas e as linhas verticais os intervalos de confiança de 95% (IC95%) obtidos por bootstrap. Observa-se que a perda máxima foi semelhante entre as diferentes janelas de tempo, sem diferenças estatisticamente significativas.](images/clipboard-2938721138.png)

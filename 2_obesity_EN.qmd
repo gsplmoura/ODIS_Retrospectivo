@@ -1,0 +1,2484 @@
+---
+title: "ODIS Retrospectivo Data Analysis"
+subtitle: "Análise dos dados dos pacientes com obesidade"
+author: "Gustavo Santos Paiva Laender Moura"
+date: "`r Sys.Date()`"
+format:
+  html:
+    toc: true
+    toc-depth: 5
+    toc-float:
+      collapsed: false
+      smooth-scroll: true
+    number-sections: false
+    code-fold: true
+    self-contained: true
+  pdf:
+    toc: true
+    toc-depth: 5
+    number-sections: true
+---
+
+```{r}
+#| label: setup
+#| message: false
+#| warning: false
+
+rm(list = ls())
+graphics.off()
+cat("\014")  # Clear any pending RStudio sessions or temporary files
+
+# Set global chunk options
+knitr::opts_chunk$set(
+  #echo = TRUE,        # Show code in output
+  #warning = FALSE,    # Hide warnings
+  #message = FALSE,    # Hide messages
+  fig.align = 'center', # Center figures
+  fig.width = 7,      # Default figure width (in inches)
+  fig.height = 5,     # Default figure height
+  out.width = "100%"  # Full-width figures
+)
+
+source("helper_functions.R")
+```
+
+```{r}
+#| label: load-packages
+#| message: false
+#| warning: false
+
+library(tidyverse)
+library(readxl)
+library(janitor)
+library(here)
+library(skimr)
+library(lubridate)
+library(gt)
+library(knitr)
+library(stringr)
+library(purrr)
+```
+
+# Consultas
+
+```{r}
+#| label: load-files
+#| message: false
+#| warning: false
+
+consultas <- read_rds(file = here("data_output", "consultas_nearest.rds"))
+codebook_consultas <- read_csv(here("data", "codebook_consultas.csv"))
+```
+
+The database `consultas` contains 5,202 observations referring to medical visits of 872 distinct patients, uniquely identified by the variable `record_id`. The dataset includes 17 variables covering sociodemographic information, consultation dates, anthropometric measures, and indicators derived from longitudinal follow-up. The variables include fixed data, such as `birthdate`, `sex`, and `race`, as well as temporal variables (`date_consultation`, `date_weight`, `baseline_date`) that allow monitoring clinical evolution over time. Direct measures were incorporated, such as `weight_kg` and `height_m`, along with calculated variables, such as body mass index (`bmi`) and percentage of weight loss relative to baseline (`percent_weight_loss`).
+
+The dataset presents some particularities regarding completeness: while variables such as `age`, `sex`, and `race` are complete for all records, there are substantial proportions of missing data in `weight_kg` (about 20%) and, consequently, in derived variables such as `bmi` and `percent_weight_loss`. The variable `height_m`, defined as the median of the available measurements per patient or supplemented via medical records, shows a completion rate close to 100%. The temporal measures span from January 2016 to October 2023, with a wide variation in the number of visits per patient (median of 4 visits, reaching more than 30 in some cases).
+
+In summary, `consultas` is a longitudinal database structured so that each row represents a patient’s consultation on a given date, containing both fixed information (individual characteristics) and dynamic variables (weight, BMI, relative weight loss), enabling temporal analyses of patients’ clinical trajectories.
+
+# Filtering
+
+### By BMI
+
+```{r}
+#| label: filtering bmi
+
+consultas_bmi <- consultas %>%
+  group_by(record_id) %>%
+  filter(
+    any(bmi >= 30, na.rm = TRUE)
+  ) %>% 
+  ungroup()
+```
+
+This code creates a new dataframe called `consultas_bmi` from the dataframe `consultas`, selecting only patients who at some point during follow-up had `bmi ≥ 30` kg/m² (obesity criterion). After applying the filter, the dataframe `consultas` (5,202 consultations, 872 patients) was reduced to include only patients who presented `bmi ≥ 30` in at least one consultation, resulting in the new dataframe `obese`. The dataframe `obese` maintains the same structure of variables (17 columns) but contains fewer patients (695) and fewer consultations (4,102), restricted to those who had obesity (`bmi ≥ 30`) in at least one assessment. This subset shows higher average weight and `bmi`, slightly lower average age, and preserves the distributions of `sex`, `race`, and follow-up period from the original dataset. These changes are summarized in the table below.
+
+| Characteristic      | `consultas`         | `consultas_bmi`             |
+|---------------------|---------------------|-----------------------------|
+| Nº of patients      | 872                 | 695 (79.7%) / loss of 20.3% |
+| Nº of consultations | 5,202               | 4,102                       |
+| Mean age (years)    | 47.3                | 45.7                        |
+| Mean weight (kg)    | 117                 | 130                         |
+| Mean bmi (kg/m²)    | 42.9                | 47.5                        |
+| Mean height (m)     | 1.64                | 1.65                        |
+| \% of women         | 60.2% (3,133/5,202) | 64.0% (2,627/4,102)         |
+| Consultation period | 2016–2023           | 2016–2023                   |
+
+
+```{r}
+#| label: filter-by-age-deprecated
+#| evaluate: false
+# In this first option, patients who were seen while still underage (`age < 18`) and who also had consultations in adulthood (`age ≥ 18`) are kept. The following code filters obese patients, retaining only those who had at least one consultation in adulthood, and excluding those who were seen exclusively before turning 18. First option (`obese_intersect`): includes all patients with at least one consultation at `age ≥ 18` (even if they have a history of consultations before 18).
+
+### By age (deprecated)
+
+# FIRST OPTION: Intersection (eval=false)
+# DEPRECATED
+
+consultas_underage <- consultas_bmi %>% 
+  arrange(desc(age)
+    ) %>% 
+    filter(age < 18
+    ) %>% 
+  distinct(record_id, .keep_all = TRUE)
+
+# Sorts the dataframe `obese` by descending age (arrange(desc(age))).
+# Filters only records of patients with age < 18 years.
+# Uses distinct(record_id, .keep_all = TRUE) → keeps only one row per patient.
+# Since it is ordered by descending age, the row kept corresponds to the oldest age of the patient while still underage.
+# Result: each patient appears only once, representing their latest consultation before 18.
+
+consultas_adults <- consultas_bmi %>% 
+    arrange(desc(age)
+            ) %>%
+    filter(age >= 18
+           ) %>% 
+  distinct(record_id, .keep_all = TRUE)
+
+# Same process, but now for patients with age ≥ 18 years.
+# Result: each patient appears only once, representing their latest consultation in adulthood.
+
+consultas_adults_records <- consultas_adults %>% pull(record_id)
+
+# Creates a vector (character) containing the IDs (`record_id`) of all patients with at least one consultation in adulthood.
+
+common_record_ids <- intersect(consultas_underage$record_id, consultas_adults$record_id)
+
+# Identifies the patients that appear in both groups (i.e., those who have records both before and after age 18).
+# intersect() returns the set of `record_id` common to the two dataframes.
+
+obese_intersect <- consultas_bmi %>% 
+  filter(
+    record_id %in% consultas_adults_records
+  )
+
+# The code divides obese patients into two subsets: those who had consultations while younger than 18 and those who had consultations in adulthood. For each patient, it keeps only one row representing the latest consultation in each phase. In addition, it identifies the subset of patients who were present in both phases of follow-up, meaning those who started when underage and continued after reaching adulthood. Based on this, the final step creates the dataframe obese that contains only patients with at least one consultation in adulthood (it filters consultas_bmi keeping the records whose record_id appears in consultas_adults_records). Thus, all individuals followed exclusively before age 18 are excluded from the main dataset, while those who reached adulthood remain available for analysis. The vector common_record_ids remains available in case it is necessary to isolate, in specific analyses, the subgroup that transitioned from underage to adult (i.e., patients with history in both phases).
+
+# A total of r nrow(consultas_underage) patients were seen in the clinic while still underage, corresponding to r sum(consultas$age < 18) medical consultations. Of these, r length(common_record_ids) continued follow-up after reaching adulthood, leaving only r nrow(consultas_underage) - length(common_record_ids) patients who did not reach adulthood during the follow-up period.
+
+# obese_intersect is the dataset of consultations containing the records of adult patients who had at least one bmi > 30 and were followed during the study period, with a total of r nrow(obese_intersect) medical consultations.
+```
+
+### By age
+
+```{r}
+#| label: obese_adults_only
+
+# 1. Identifica todos os pacientes que tiveram consultas < 18 anos
+underage_records <- consultas_bmi %>% 
+  filter(age < 18) %>% 
+  pull(record_id) %>% 
+  unique()
+
+# 2. Cria o dataset 'obese' apenas com consultas de pacientes adultos
+#    que nunca tiveram consulta como menores de idade
+consultas_adults <- consultas_bmi %>% 
+  filter(
+    age >= 18,                           # garante só idade adulta
+    !(record_id %in% underage_records))  # exclui quem já foi <18
+```
+
+The code above creates a new dataframe called `consultas_adults`, which includes only patients who entered follow-up as adults (`age ≥ 18`). Patients who had any consultations while underage are completely excluded from the dataset. The resulting dataframe has minimal changes in descriptive statistics and only a small reduction in the number of records and patients. This suggests that the fraction of individuals with a history of `age < 18` was relatively small and did not substantially distort the group’s anthropometric averages. The table belows summarizes the changes observed when transitioning from `consultas_bmi` to `consultas_adults`.
+
+| **Metric**                    | `consultas_bmi` | `consultas_adults` |
+|-------------------------------|-----------------|--------------------|
+| Rows (consultations)          | 4,102           | 4,039              |
+| Unique patients               | 695             | 684                |
+| Mean age (years)              | 45.7            | 46.2               |
+| Minimum age (years)           | 5.68            | 18.0               |
+| Women, n (%)                  | 2,627 (64.0%)   | 2,600 (64.4%)      |
+| Mean weight (kg)              | 130             | 130                |
+| Mean bmi (kg/m²)              | 47.5            | 47.6               |
+| Missing `weight_kg` (n)       | 790             | 784                |
+| Missing `bmi` (n)             | 790             | 784                |
+| Missing `percent_weight_loss` | 1,384           | 1,369              |
+
+### Nº of consultations (≥ 2 visits)
+
+```{r}
+#| label: at-least-2-visits
+
+consultas_2_visits <- consultas_adults %>% 
+  group_by(record_id) %>% 
+  filter(n() >= 2) %>% 
+  ungroup()
+```
+
+This code groups the data by `record_id` (unique patient identifier) and keeps only those groups (patients) with two or more observations (consultations). By excluding patients with only one consultation, the number of individuals is significantly reduced (−16%), but the clinical profile (age, sex, mean weight and bmi) remains virtually unchanged. The table below compares what changed when requiring ≥2 consultations per patient (from consultas_adults to consultas_2_visits):
+
+| **Metric**                  | `consultas_adults` | `consultas_2_visits` |
+|-----------------------------|--------------------|----------------------|
+| Rows (consultations)        | 4,039              | 3,929                |
+| Unique patients (record_id) | 684                | 574                  |
+| Mean age (years)            | 46.2               | 46.3                 |
+| Minimum age (years)         | 18.0               | 18.0                 |
+| Women, n (%)                | 2,600 (64.4%)      | 2,523 (64.3%)        |
+| Mean weight (kg)            | 130                | 130                  |
+| Mean bmi (kg/m²)            | 47.6               | 47.6                 |
+| weight_kg missing (n)       | 784                | 784                  |
+| bmi missing (n)             | 784                | 784                  |
+| percent_weight_loss missing | 1,369              | 1,259                |
+
+## Table. Comparison of datasets used in the analysis
+
+| **Characteristic / Metric**       | `consultas`           | `consultas_bmi`              | `consultas_adults`       |
+|-----------------------------------|-----------------------|------------------------------|--------------------------|
+| Nº of patients                    | 872                   | 695 (79.7%) / loss of 20.3%  | 684                      |
+| Nº of consultations (rows)        | 5,202                 | 4,102                        | 4,039                    |
+| Unique patients                   | —                     | 695                          | 684                      |
+| Mean age (years)                  | 47.3                  | 45.7                         | 46.2                     |
+| Minimum age (years)               | —                     | 5.68                         | 18.0                     |
+| Women, n (%)                      | 3,133 (60.2%)         | 2,627 (64.0%)                | 2,600 (64.4%)            |
+| Mean weight (kg)                  | 117                   | 130                          | 130                      |
+| Mean height (m)                   | 1.64                  | 1.65                         | —                        |
+| Mean BMI (kg/m²)                  | 42.9                  | 47.5                         | 47.6                     |
+| Missing `weight_kg` (n)           | —                     | 790                          | 784                      |
+| Missing `bmi` (n)                 | —                     | 790                          | 784                      |
+| Missing `percent_weight_loss` (n) | —                     | 1,384                        | 1,369                    |
+| Consultation period               | 2016–2023             | 2016–2023                    | —                        |
+
+# Objectives
+
+Analyze frequency, central tendency, and dispersion measures associated with obesity treatment, aiming to identify clinical and epidemiological variables linked to better response to clinical treatment of obesity.
+
+1.  Descriptive component\
+    1.1. \* Epidemiological profile at the first consultation: age, sex, ethnicity, bmi, comorbidities.\
+    1.2. Incidence of cardiovascular, osteometabolic diseases, anemias, and vitamin deficiencies.\
+    1.3. \* Care indicators: number of consultations and follow-up time.\
+    1.4. Types of treatments prescribed for obesity and dyslipidemia and their frequency.\
+    1.5. Cause of the 95 deaths.\
+    1.6. \* Proportion of individuals with final weight higher than baseline.\
+    1.7. \* Proportion of consultations (from the second onward) with weight gain or loss compared to the previous one.
+
+2.  Analyses by follow-up time\
+    2.1. \* Compare the maximum percentage of weight loss between follow-up ≤12 months and \>12 months, adjusting for sex, ethnicity, age, baseline bmi, comorbidities, and medication use.\
+    2.2. \* Assess association of maximum weight loss with demographic, clinical, and follow-up variables.\
+    2.3. \* Describe the moment when each individual reached ≥5% loss relative to baseline weight.
+
+3.  Subgroups with ≥5% weight loss\
+    3.1. \* Identify the time and consultation of the first observation of ≥5% loss.\
+    3.2. \* Frequency measures of weight regain after ≥5% loss.\
+    3.3. \* Compare maximum weight loss among subgroups (≤6 months, 6–12 months, \>12 months).
+
+4.  Group without ≥5% weight loss\
+    4.1. \* Identify follow-up time and consultation with greatest observed loss.\
+    4.2. \* Describe weight gain after this moment.
+
+5.  Protocols and standardization\
+    5.1. Develop a care protocol with inclusion criteria, screening, follow-up, treatment, and discharge.\
+    5.2. Create a standardized medical form for protocol implementation.
+
+# Dataset selection
+
+Choose the desired dataset for subsequent analyses, keeping the object name `obese` for consistency in the code that follows.
+
+```{r}
+#| label: choose-dataset
+
+obese <- consultas_2_visits
+```
+
+```{r}
+#| label: clear-environment
+
+rm(
+  consultas, 
+  consultas_bmi, 
+  obese_intersect,
+  consultas_adults, 
+  consultas_2_visits, 
+  consultas_underage, 
+  consultas_adults_records, 
+  common_record_ids, 
+  underage_records)
+```
+
+# 1. Descriptive component
+
+## 1.1. Patient characteristics
+
+```{r}
+#| label: baseline-epidemiologic-profile
+
+# 1) First consultation per patient
+baseline <- obese %>%
+  group_by(record_id) %>%
+  arrange(date_consultation, .by_group = TRUE) %>%
+  slice(1) %>%
+  ungroup()
+
+# 2) Helper functions ----------------------------------------------------
+
+# 2.1) Statistics with 95% CI (Student's t) + min/max, ignoring NAs
+ic95_stats <- function(x) {
+  x <- x[!is.na(x)]
+  n  <- length(x)
+  if (n == 0) {
+    return(c(media = NA_real_, li = NA_real_, ls = NA_real_, min = NA_real_, max = NA_real_))
+  }
+  m  <- mean(x)
+  s  <- sd(x)
+  se <- s / sqrt(n)
+  tcrit <- if (n > 1) qt(0.975, df = n - 1) else NA_real_
+  li <- if (!is.na(tcrit)) m - tcrit * se else NA_real_
+  ls <- if (!is.na(tcrit)) m + tcrit * se else NA_real_
+  c(media = m, li = li, ls = ls, min = min(x), max = max(x))
+}
+
+# 2.2) Completeness summary (N missings and %)
+na_profile <- function(v) {
+  n_total   <- length(v)
+  n_na      <- sum(is.na(v))
+  pct_na    <- if (n_total > 0) 100 * n_na / n_total else NA_real_
+  c(n_total = n_total, n_na = n_na, pct_na = pct_na)
+}
+
+# 3) NUMERIC summaries ---------------------------------------------------
+
+# 3.1) Statistics with 95% CI for continuous variables
+idade_stats  <- ic95_stats(baseline$age)
+peso_stats   <- ic95_stats(baseline$weight_kg)
+altura_stats <- ic95_stats(baseline$height_m)
+imc_stats    <- ic95_stats(baseline$bmi)
+
+# 3.2) Completeness for continuous variables
+idade_na  <- na_profile(baseline$age)
+peso_na   <- na_profile(baseline$weight_kg)
+altura_na <- na_profile(baseline$height_m)
+imc_na    <- na_profile(baseline$bmi)
+
+# 4) CATEGORICAL summaries ------------------------------------------------
+
+# For sex and race, proportions are calculated over non-missing N,
+# but we also show N and % of NAs
+
+# 4.1) Sex
+sexo_baseline <- baseline %>%
+  count(sex, name = "n") %>%
+  mutate(prop = 100 * n / sum(n, na.rm = TRUE))
+
+sexo_na <- na_profile(baseline$sex)
+
+# 4.2) Race
+etnia_baseline <- baseline %>%
+  count(race, name = "n") %>%
+  mutate(prop = 100 * n / sum(n, na.rm = TRUE))
+
+etnia_na <- na_profile(baseline$race)
+
+# 5) Consolidated tibbles -------------------------------------------------
+
+# 5.1) Numeric profile (one row per variable, with mean, 95% CI, min, max, NAs)
+perfil_numerico <- tibble::tibble(
+  Variavel   = c("Age (years)", "Weight (kg)", "Height (m)", "BMI (kg/m²)"),
+  Media      = c(idade_stats["media"],  peso_stats["media"],  altura_stats["media"],  imc_stats["media"]),
+  IC95_inf   = c(idade_stats["li"],     peso_stats["li"],     altura_stats["li"],     imc_stats["li"]),
+  IC95_sup   = c(idade_stats["ls"],     peso_stats["ls"],     altura_stats["ls"],     imc_stats["ls"]),
+  Minimo     = c(idade_stats["min"],    peso_stats["min"],    altura_stats["min"],    imc_stats["min"]),
+  Maximo     = c(idade_stats["max"],    peso_stats["max"],    altura_stats["max"],    imc_stats["max"]),
+  N_total    = c(idade_na["n_total"],   peso_na["n_total"],   altura_na["n_total"],   imc_na["n_total"]),
+  N_NA       = c(idade_na["n_na"],      peso_na["n_na"],      altura_na["n_na"],      imc_na["n_na"]),
+  Perc_NA    = c(idade_na["pct_na"],    peso_na["pct_na"],    altura_na["pct_na"],    imc_na["pct_na"])
+)
+
+# 5.2) Categorical profile (one row per category + NA row)
+sexo_tbl <- sexo_baseline %>%
+  mutate(Variavel = "Sex",
+         Categoria = as.character(sex)) %>%
+  select(Variavel, Categoria, n, prop)
+
+sexo_tbl_na <- tibble::tibble(
+  Variavel = "Sex",
+  Categoria = "NA",
+  n = sexo_na["n_na"],
+  prop = 100 * as.numeric(sexo_na["n_na"]) / as.numeric(sexo_na["n_total"])
+)
+
+etnia_tbl <- etnia_baseline %>%
+  mutate(Variavel = "Race",
+         Categoria = as.character(race)) %>%
+  select(Variavel, Categoria, n, prop)
+
+etnia_tbl_na <- tibble::tibble(
+  Variavel = "Race",
+  Categoria = "NA",
+  n = etnia_na["n_na"],
+  prop = 100 * as.numeric(etnia_na["n_na"]) / as.numeric(etnia_na["n_total"])
+)
+
+perfil_categorico <- bind_rows(
+  sexo_tbl, sexo_tbl_na,
+  etnia_tbl, etnia_tbl_na
+)
+
+# 6) Total number of patients
+n_total_pacientes <- dplyr::n_distinct(baseline$record_id)
+```
+
+The code is structured into blocks that build the epidemiological profile of patients at their first consultation.\
+
+1.  `baseline`:dataframe containing the first consultation per patient.\
+2.  Creates helper functions\
+    2.1 `ic95_stats`: calculates mean, 95% CI (using Student's t), minimum and maximum of numeric variables.\
+    2.2 `na_profile`: calculates completeness of variables (total, number and percentage of missing values).\
+3.  Numeric summaries: applies `ic95_stats` and `na_profile` to continuous variables (age, weight, height, and bmi) from the first consultation, generating descriptive statistics with 95% CI and information on missing values.\
+4.  Categorical summaries: generates absolute and relative frequencies for sex and race, in addition to counting missing values for each categorical variable.\
+5.  Consolidated tables:\
+    5.1 `perfil_numerico`: organizes the statistics of continuous variables in tabular format (one row per variable).\
+    5.2 `perfil_categorico`: organizes the distributions of sex and race, including extra rows for missing values.\
+6.  Calculates the total number of distinct individuals in baseline, providing the initial sample size.\
+
+```{r}
+#| label: table-baseline-numeric
+
+# Function to format with defined decimals
+fmt <- function(x, dec) {
+  ifelse(is.na(x), "",
+         format(round(as.numeric(x), dec),
+                big.mark = ".", decimal.mark = ",", trim = TRUE))
+}
+
+# Define number of decimal places by variable
+dec_map <- c("Age (years)"   = 0,
+             "Weight (kg)"   = 1,
+             "Height (m)"    = 1,
+             "BMI (kg/m²)"   = 1)
+
+# Apply formatting to numeric table
+perfil_numerico_fmt <- perfil_numerico %>%
+  rowwise() %>%
+  mutate(
+    d = dec_map[Variavel],
+    Media    = fmt(Media, d),
+    IC95_inf = fmt(IC95_inf, d),
+    IC95_sup = fmt(IC95_sup, d),
+    Minimo   = fmt(Minimo, d),
+    Maximo   = fmt(Maximo, d),
+    Perc_NA  = paste0(fmt(Perc_NA, 1), "%")
+  ) %>%
+  ungroup() %>%
+  select(-d)
+
+# Render final table
+knitr::kable(
+  perfil_numerico_fmt,
+  col.names = c("Variable","Mean","95% CI Lower","95% CI Upper","Minimum","Maximum","N total","N (NA)","% (NA)"),
+  align = c("l","c","c","c","c","c","c","c","c")
+)
+```
+
+The code is structured into blocks that prepare and display the formatted table of **numeric** baseline profile variables.\
+
+1.  `fmt`: defines a formatting function to display numbers with a fixed number of decimal places, using a "comma as decimal **COMMA AS DECIMAL** separator and a dot as thousands separator. Missing values are displayed as empty.\
+2.  `dec_map`: decimal map sets the number of decimal places for each variable (age with no decimals; weight, height, and bmi with one decimal place).\
+3.  Iterates over each row of `perfil_numerico`, applies the correct number of decimal places, formats statistics (mean, 95% CI, minimum, maximum), and adds the percentage symbol to the missing data column.\
+4.  Uses `knitr::kable` to generate the final table, with adjusted column names and centered alignment for numeric values.
+
+```{r}
+#| label: table-baseline-categorical
+
+# Formatting function
+fmt_num <- function(x, dec) format(round(x, dec), big.mark = ".", decimal.mark = ",", trim = TRUE)
+
+# Apply formatting
+perfil_categorico_fmt <- perfil_categorico %>%
+  mutate(
+    n    = fmt_num(n, 0),   # N total without decimal places
+    prop = fmt_num(prop, 1) # Proportion (%) with 1 decimal place
+  )
+
+# Render table
+knitr::kable(
+  perfil_categorico_fmt,
+  col.names = c("Variable", "Category", "N total", "Proportion (%)"),
+  align = c("l", "l", "c", "c"),
+  caption = "Categorical profile: sex and race at the first consultation"
+)
+```
+
+The code organizes and displays the formatted table of **categorical** baseline profile variables:\
+
+1.  `fmt_num`: defines formatting function for numeric presentation with a comma as decimal separator and a dot as thousands separator. Counts (`n`) are shown without decimal places. Proportions (`prop`) are shown with one decimal place.\
+2.  Application of formatting of the `perfil_categorico` table into the defined format.\
+3.  Renders the final table with `knitr::kable`.\
+
+> Output:
+
+-   *N*: **574 patients**\
+-   *N consultations*: 3,929\
+-   *Age*: mean 44 years (95% CI: 43–45; range: 18–84).\
+-   *Weight*: mean 133.8 kg (95% CI: 130.4–137.2; range: 59.7–268.7).\
+-   *Height*: mean 1.65 m (95% CI: 1.64–1.66; range: 1.15–1.91).\
+-   *BMI*: mean 48.9 kg/m² (95% CI: 47.8–50.0; range: 26.9–91.5).\
+-   *Missing data*: 99 cases (17.2%) for weight and BMI; none for age and height.\
+-   *Sex*: 375 women (65.3%) and 199 men (34.7%); no missing data.\
+-   *Race*: 428 White (74.6%), 95 Brown (16.6%), 48 Black (8.4%), 3 “Verify” (0.5%); no missing data.\
+
+> Results: The study included 574 patients across 3,929 medical consultations. Most patients were female (65.3%) and white (74.6%) . At baseline, the mean age was 44 years (95% CI: 43–45; range: 18–84). Mean weight was 133.8 kg (95% CI: 130.4–137.2; range: 59.7–268.7), mean height 1.65 m (95% CI: 1.64–1.66; range: 1.15–1.91), and mean BMI 48.9 kg/m² (95% CI: 47.8–50.0; range: 26.9–91.5). Missing data occurred in 17.2% of weight and BMI measurements.
+
+### Table. Baseline characteristics of the study population (n = 574)
+
+| **Characteristic** | **Mean (95% CI)** | **Range** | **N total** | **Missing, n (%)** |
+|---------------|---------------|---------------|---------------|---------------|
+| **Age (years)** | 44 (43–45) | 18–84 | 574 | 0 (0.0) |
+| **Weight (kg)** | 133.8 (130.4–137.2) | 59.7–268.7 | 574 | 99 (17.2) |
+| **Height (m)** | 1.65 (1.64–1.66) | 1.15–1.91 | 574 | 0 (0.0) |
+| **BMI (kg/m²)** | 48.9 (47.8–50.0) | 26.9–91.5 | 574 | 99 (17.2) |
+|  |  |  |  |  |
+| **Sex, n (%)** |  |  |  |  |
+| • Female | 375 (65.3) | — | 574 | 0 (0.0) |
+| • Male | 199 (34.7) | — |  |  |
+|  |  |  |  |  |
+| **Race, n (%)** |  |  |  |  |
+| • White | 428 (74.6) | — | 574 | 0 (0.0) |
+| • Brown (Pardo) | 95 (16.6) | — |  |  |
+| • Black | 48 (8.4) | — |  |  |
+| • Verify | 3 (0.5) | — |  |  |
+
+```{r}
+#| label: cleanup-baseline-epidemiologic
+#| message: false
+
+# Remove only intermediate objects created during the analysis of item 1.1
+# Keep helper functions (ic95_stats, na_profile, fmt, fmt_num)
+
+rm(
+  #baseline,
+  idade_stats, peso_stats, altura_stats, imc_stats,
+  idade_na, peso_na, altura_na, imc_na,
+  sexo_baseline, sexo_na,
+  etnia_baseline, etnia_na,
+  sexo_tbl, sexo_tbl_na,
+  etnia_tbl, etnia_tbl_na,
+  perfil_numerico, 
+  perfil_numerico_fmt,
+  perfil_categorico, 
+  perfil_categorico_fmt,
+  n_total_pacientes,
+  dec_map
+)
+```
+
+## 1.3. Care indicators: number of consultations and follow-up time.
+
+```{r}
+#| label: atendimento-indicadores
+
+# calculate number of consultations, follow-up time, and mean interval between consultations
+indicadores_atendimento <- obese %>%
+  group_by(record_id) %>%
+  summarise(
+    n_consultas = n(), # number of consultations per patient
+    
+    # total follow-up time between the 1st and last consultation
+    tempo_seguimento_dias = as.numeric(max(date_consultation, na.rm = TRUE) -
+                                       min(date_consultation, na.rm = TRUE)),
+    
+    tempo_seguimento_semanas = tempo_seguimento_dias / 7,
+    tempo_seguimento_meses  = tempo_seguimento_dias / 30.44,
+    tempo_seguimento_anos   = tempo_seguimento_dias / 365.25,
+    
+    # mean interval between consultations (average of intervals between consecutive visits)
+    tempo_medio_entre_consultas_dias = dplyr::if_else(
+      n_consultas > 1,
+      tempo_seguimento_dias / (n_consultas - 1),
+      as.numeric(NA)
+    ),
+    # auxiliary conversions
+    tempo_medio_entre_consultas_semanas = tempo_medio_entre_consultas_dias / 7,
+    tempo_medio_entre_consultas_meses   = tempo_medio_entre_consultas_dias / 30.44,
+    tempo_medio_entre_consultas_anos    = tempo_medio_entre_consultas_dias / 365.25,
+    .groups = "drop"
+  )
+```
+
+This code creates the dataframe `indicadores_atendimento`, which summarizes the main follow-up indicators for each patient. It performs the following steps:
+
+1. *Number of consultations* (`n_consultas`): calculates the total number of medical visits per patient.\
+2. *Follow-up time*: computes the interval between the first and last consultation and expresses it in days, weeks, months, and years (`tempo_seguimento_dias`, `tempo_seguimento_semanas`, `tempo_seguimento_meses`, `tempo_seguimento_anos`.)\
+3. *Mean interval between consultations*: estimates the average time between consecutive visits, dividing the total follow-up period by the number of intervals (`n_consultas - 1`). This measure is also provided in days, weeks, months, and years (`tempo_medio_entre_consultas_semanas`,`tempo_medio_entre_consultas_meses`,`tempo_medio_entre_consultas_anos)
+
+```{r}
+#| label: n-consultas-sumario
+#| eval: false
+
+# Measures: median, p5, p25, p75, p95, maximum
+sumario_n_consultas <- indicadores_atendimento %>%
+  summarise(
+    p5      = quantile(n_consultas, probs = 0.05, na.rm = TRUE, type = 7),
+    p25     = quantile(n_consultas, probs = 0.25, na.rm = TRUE, type = 7),
+    mediana = quantile(n_consultas, probs = 0.50, na.rm = TRUE, type = 7),
+    p75     = quantile(n_consultas, probs = 0.75, na.rm = TRUE, type = 7),
+    p95     = quantile(n_consultas, probs = 0.95, na.rm = TRUE, type = 7),
+    max     = max(n_consultas, na.rm = TRUE)
+  ) %>%
+  pivot_longer(everything(), names_to = "measure", values_to = "value") %>%
+  mutate(value_fmt = fmt(value, dec = 0)) %>%
+  select(measure, value = value_fmt)
+
+kable(sumario_n_consultas,
+      caption = "Number of consultations per patient — median, percentiles (5, 25, 75, 95) and maximum")
+```
+
+This code generates `sumario_n_consultas`, a descriptive summary dataframe of the number of consultations per patient.
+
+> Results: The number of consultations per patient varied widely, ranging from 2 to 26 visits during the follow-up period. The distribution was right-skewed, with a higher concentration in the lower ranges: 25% of patients had up to 3 consultations, while the median was 5 consultations and 75% had up to 9 consultations. Only 5% exceeded 17 visits.
+
+| **Measure** | **Value** |
+|-------------|-----------|
+| p5          | 2         |
+| p25         | 3         |
+| Median      | 5         |
+| p75         | 9         |
+| p95         | 17        |
+| Max         | 26        |
+
+```{r}
+#| label: n-consultations-frequencies
+#| message: false
+
+# Frequency distribution (absolute and relative)
+tabela_frequencias <- indicadores_atendimento %>%
+  count(n_consultas, name = "freq") %>%
+  mutate(
+    pct = 100 * freq / sum(freq),
+    freq_fmt = fmt(freq, dec = 0),
+    pct_fmt  = paste0(fmt(pct, dec = 2), "%")
+  ) %>%
+  select(`n_consultas` = n_consultas,
+         `frequency` = freq_fmt,
+         `%` = pct_fmt)
+
+kable(tabela_frequencias,
+      caption = "Distribution of the number of consultations per patient (frequency and percentage)",
+      align = c("c", "c", "c")
+      )
+```
+
+This code builds `tabela_frequencias`, the frequency distribution of the number of consultations per patient. It counts how many individuals had exactly a given number of consultations and calculates the corresponding percentage of the total.
+
+> Results: The distribution of consultations was right-skewed. Most patients had between 2 and 9 visits (about 75% of the total), while fewer than 3% attended more than 20. 
+
+```{r}
+#| label: n-consultations-ecdf
+#| fig.cap: "Empirical cumulative distribution function (ECDF) of the number of consultations"
+#| fig.width: 7
+#| fig.height: 4
+
+ggplot(indicadores_atendimento, aes(x = n_consultas)) +
+    stat_ecdf(geom = "step") +
+    scale_x_continuous(
+        breaks = seq(0, max(indicadores_atendimento$n_consultas), by = 1) # ticks every 1
+    ) +
+    scale_y_continuous(
+        breaks = seq(0, 1, by = 0.1), # ticks every 10%
+        labels = scales::percent_format(accuracy = 1)
+    ) +
+    labs(x = "Number of consultations per patient", y = "Cumulative (%)") +
+    theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.major.y = element_line(color = "grey80", linewidth = 0.3), # major horizontal grid lines
+    panel.grid.minor.y = element_line(color = "grey90", linewidth = 0.1), # minor horizontal grid lines
+    panel.grid.major.x = element_line(color = "grey90", linewidth = 0.3)  # subtle vertical grid lines
+  )
+```
+> Legend: The empirical cumulative distribution function (ECDF) plot shows on the x-axis the number of consultations per patient and on the y-axis the cumulative proportion of patients reaching up to that value. About **30% of patients had up to 3 consultations**, **50% up to 5 consultations (median)**, and **75% up to 9 consultations (75th percentile)**. The curve flattens after approximately 10 consultations, indicating that prolonged follow-up was less common, and it reaches 100% at around 26 consultations, the maximum observed. 
+
+> This type of plot facilitates visualization of **percentiles**: by drawing a horizontal line at the desired cumulative level (e.g., 25%, 50%, 75%), the corresponding number of consultations can be read on the x-axis.
+
+```{r}
+#| label: resumo-tempo-seguimento
+
+library(dplyr)
+library(knitr)
+
+resumo_tempo_seguimento <- indicadores_atendimento %>%
+  summarise(
+    dias_mediana    = median(tempo_seguimento_dias, na.rm = TRUE),
+    dias_IQR        = IQR(tempo_seguimento_dias, na.rm = TRUE),
+    dias_max        = max(tempo_seguimento_dias, na.rm = TRUE),
+    
+    semanas_mediana = median(tempo_seguimento_semanas, na.rm = TRUE),
+    semanas_IQR     = IQR(tempo_seguimento_semanas, na.rm = TRUE),
+    semanas_max     = max(tempo_seguimento_semanas, na.rm = TRUE),
+    
+    meses_mediana   = median(tempo_seguimento_meses, na.rm = TRUE),
+    meses_IQR       = IQR(tempo_seguimento_meses, na.rm = TRUE),
+    meses_max       = max(tempo_seguimento_meses, na.rm = TRUE),
+    
+    anos_mediana    = median(tempo_seguimento_anos, na.rm = TRUE),
+    anos_IQR        = IQR(tempo_seguimento_anos, na.rm = TRUE),
+    anos_max        = max(tempo_seguimento_anos, na.rm = TRUE)
+  ) %>%
+  tidyr::pivot_longer(
+    cols = everything(),
+    names_to = c("tempo", "estatistica"),
+    names_sep = "_",
+    values_to = "valor"
+  ) %>%
+  tidyr::pivot_wider(
+    names_from = estatistica,
+    values_from = valor
+  ) %>%
+  # aplicar a função fmt com 2 casas decimais
+  mutate(across(c(mediana, IQR, max), ~fmt(.x, dec = 1)))
+
+kable(resumo_tempo_seguimento,
+      caption = "Follow-up time in days, weeks, months and years (median, IQR, maximum)")
+```
+
+This code generates a statistical summary of patient follow-up time. It calculates, in different time units (days, weeks, months, and years), the median, IQR, and the maximum value of the period between the first and the last consultation.
+
+```{r}
+#| label: resumo-intervalos-consulta
+
+# Table with statistics of the AVERAGE TIMES between consultations
+resumo_intervalos_consultas <- indicadores_atendimento %>%
+  summarise(
+    dias_mediana    = median(tempo_medio_entre_consultas_dias, na.rm = TRUE),
+    dias_IQR        = IQR(tempo_medio_entre_consultas_dias, na.rm = TRUE),
+    dias_max        = max(tempo_medio_entre_consultas_dias, na.rm = TRUE),
+
+    semanas_mediana = median(tempo_medio_entre_consultas_semanas, na.rm = TRUE),
+    semanas_IQR     = IQR(tempo_medio_entre_consultas_semanas, na.rm = TRUE),
+    semanas_max     = max(tempo_medio_entre_consultas_semanas, na.rm = TRUE),
+
+    meses_mediana   = median(tempo_medio_entre_consultas_meses, na.rm = TRUE),
+    meses_IQR       = IQR(tempo_medio_entre_consultas_meses, na.rm = TRUE),
+    meses_max       = max(tempo_medio_entre_consultas_meses, na.rm = TRUE),
+
+    anos_mediana    = median(tempo_medio_entre_consultas_anos, na.rm = TRUE),
+    anos_IQR        = IQR(tempo_medio_entre_consultas_anos, na.rm = TRUE),
+    anos_max        = max(tempo_medio_entre_consultas_anos, na.rm = TRUE)
+  ) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = c("tempo", "estatistica"),
+    names_sep = "_",
+    values_to = "valor"
+  ) %>%
+  pivot_wider(
+    names_from = estatistica,
+    values_from = valor
+  ) %>%
+  # formatting with comma and 2 decimal places using your `fmt` function
+  mutate(across(c(mediana, IQR, max), ~ fmt(.x, dec = 2)))
+
+kable(
+  resumo_intervalos_consultas,
+  caption = "Average time between consultations in days, weeks, months and years (median, IQR, maximum)"
+)
+```
+
+This code summarizes the average time between consultations for patients. It calculates, in days, weeks, months, and years, the median, IQR, and maximum value. 
+
+> Results:
+> The follow-up time of patients showed wide variability, ranging from a few weeks to more than 7 years. The median was **18.5 months** (IQR: 31.9), equivalent to **1.5 years** (IQR: 2.7), with a maximum of **7.7 years**. This indicates that half of the patients were followed for up to one and a half years, while a smaller group remained under prolonged follow-up for several years.
+> The average interval between consultations also varied substantially. The median was approximately **120 days** (IQR: 68.8), equivalent to about **4 months** between visits. The upper percentile shows that some patients reached average intervals of up to **777 days** (more than 2 years), suggesting heterogeneous patterns of follow-up. The scatterplot illustrates that while most patients maintained relatively regular intervals of up to 6 months, in longer follow-ups some cases presented progressively larger gaps between visits, exceeding one year.
+
+In summary, most patients were followed at regular intervals of a few months, but with considerable variation both in total follow-up duration and in consultation frequency.
+
+## Discussion
+
+The findings on follow-up time and consultation intervals suggest a heterogeneous pattern of patient monitoring. Most patients maintained regular returns every 3 to 6 months, consistent with clinical practice for continuous monitoring in obesity treatment programs. However, in longer follow-up periods, increasing variability was observed, with some patients exceeding 12 months between visits. 
+
+This behavior may reflect multiple factors: initial clinical improvement that reduced the need for frequent monitoring, logistical barriers to attendance such as access and availability of services, or partial disengagement from formal follow-up with only occasional returns. 
+
+The coexistence of these two profiles — patients with regular consultations and others with sparse returns over time — has methodological and clinical implications. Analytically, irregular consultation intervals may bias the interpretation of longitudinal weight trajectories. Clinically, it emphasizes the importance of strategies to promote adherence to follow-up, particularly in long-term care, to ensure continuity of treatment and early detection of obesity-related complications.
+
+```{r}
+#| label: seguimento-vs-intervalo
+#| fig.cap: "Relação entre tempo total de seguimento e intervalo médio entre consultas"
+#| fig.width: 7
+#| fig.height: 5
+
+library(ggplot2)
+
+ggplot(indicadores_atendimento,
+       aes(x = tempo_seguimento_anos,
+           y = tempo_medio_entre_consultas_meses)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", se = TRUE, color = "blue", linewidth = 0.8) +
+  scale_x_continuous(breaks = seq(0, max(indicadores_atendimento$tempo_seguimento_anos, na.rm = TRUE), by = 1)) +
+  scale_y_continuous(breaks = seq(0, max(indicadores_atendimento$tempo_medio_entre_consultas_meses, na.rm = TRUE), by = 2)) +
+  labs(
+    x = "Tempo de seguimento (anos)",
+    y = "Tempo médio entre consultas (meses)"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+Este código gera um gráfico de dispersão para explorar a relação entre o tempo total de seguimento dos pacientes (em anos) e o intervalo médio entre consultas (em meses). Cada ponto representa um paciente, com transparência aplicada para reduzir sobreposição. Além disso, é ajustada uma linha de regressão linear com intervalo de confiança, destacada em azul, para indicar a tendência da associação entre as duas variáveis. Os eixos são configurados com quebras regulares para facilitar a leitura, e a apresentação utiliza o tema minimalista para manter o gráfico limpo e claro.
+
+> Legenda Figura X. Relação entre o tempo total de seguimento (anos) e o intervalo médio entre consultas (meses). Cada ponto representa um paciente; a linha azul indica a tendência linear. Observa-se que, embora a maioria mantenha intervalos regulares de até 6 meses, em seguimentos prolongados surgem casos com retornos mais espaçados, chegando a mais de um ano. O gráfico de dispersão mostra a relação entre o **tempo total de seguimento** (eixo X, em anos) e o **intervalo médio entre consultas** (eixo Y, em meses) para cada paciente. Cada ponto representa um indivíduo, e a linha azul corresponde à tendência linear ajustada.
+
+Observa-se que a maioria dos pacientes apresenta **intervalos médios entre consultas de 2 a 6 meses**, independentemente da duração total do seguimento. Contudo, conforme o tempo de acompanhamento aumenta, surgem pacientes com intervalos progressivamente maiores, alguns ultrapassando **12 meses** e chegando a mais de **20 meses** entre consultas em média. Isso explica a discreta inclinação positiva da linha de tendência: em média, pacientes com seguimento mais longo tendem a apresentar **consultas mais espaçadas**.
+
+O padrão sugere dois grupos distintos:\
+1. **Seguimento curto a intermediário (até 2 anos)** — caracterizado por alta densidade de pontos e intervalos médios regulares, geralmente abaixo de 6 meses.\
+2. **Seguimento prolongado (acima de 3–4 anos)** — inclui pacientes com **intervalos heterogêneos**, variando de intervalo de seguimento regular até casos com retornos muito espaçados (\>1 ano).
+
+Esse achado reforça que, embora a mediana global seja de aproximadamente **4 meses entre consultas**, há **grande heterogeneidade individual**, especialmente entre pacientes mantidos em seguimento por períodos mais longos.
+
+```{r}
+#| label: cleanup-indicadores-atendimento
+
+rm(
+  #indicadores_atendimento,
+  sumario_n_consultas,
+  tabela_frequencias,
+  resumo_tempo_seguimento,
+  resumo_intervalos_consultas
+)
+```
+
+Limpa apenas os objetos intermediários criados durante a análise do item 1.3
+
+## 1.6. Proporção de indivíduos com peso final maior que o inicial.
+
+```{r}
+#| label: prop-peso-final-maior
+#| fig.cap: "Proporção de indivíduos com peso final maior que o inicial"
+
+# Selecionar primeiro e último peso por paciente
+peso_inicial_final <- obese %>%
+  group_by(record_id) %>%
+  summarise(
+    peso_inicial = first(weight_kg[order(date_consultation)]),
+    peso_final   = last(weight_kg[order(date_consultation)]),
+    .groups = "drop"
+  ) %>%
+  mutate(ganhou_peso = peso_final > peso_inicial)
+
+# Calcular proporção e IC95%
+resultado_peso_final <- peso_inicial_final %>%
+  summarise(
+    n_total = n(),
+    n_ganho = sum(ganhou_peso, na.rm = TRUE),
+    prop_ganho = n_ganho / n_total
+  ) %>%
+  mutate(
+    ic95 = list(binom.test(n_ganho, n_total)$conf.int)
+  ) %>%
+  unnest_wider(ic95, names_sep = "_")
+
+resultado_peso_final
+```
+
+Esse código seleciona o primeiro e o último peso de cada paciente, compara-os e gera uma variável booleana (ganhou_peso), que assume valor 1 (TRUE) quando o peso da última consulta foi maior que o peso da primeira consulta. Em seguida, calcula-se a proporção de indivíduos cujo peso final foi maior que o inicial, incluindo o intervalo de confiança de 95% (IC95%) pelo teste binomial exato. O resultado mostra o número total de pacientes avaliados, quantos ganharam peso no período e a proporção correspondente, acompanhada do IC95%.
+
+> Resultado:\
+> Entre os *574* indivíduos acompanhados, **153 (26,7%; IC95%: 23,1–30,5%) apresentaram peso final maior do que o peso inicial**. Isso indica que aproximadamente um quarto dos pacientes teve ganho ponderal ao longo do período de seguimento, enquanto a maioria (73.3%) apresentou peso final igual ou inferior ao inicial.\
+
+> Discussão:\
+> Do ponto de vista clínico, esse achado sugere que, embora a maior parte dos pacientes tenha conseguido manter ou reduzir o peso em relação ao início do acompanhamento, ainda existe uma proporção considerável que apresentou reganho ponderal. Esse fenômeno é consistente com a literatura, que aponta a dificuldade de manutenção da perda de peso em longo prazo, especialmente em contextos de obesidade, e reforça a importância de estratégias de acompanhamento contínuo e intervenções sustentadas para prevenção do reganho.
+
+## 1.7. Proporção de consultas (a partir da segunda) com ganho ou perda de peso em relação à anterior/baseline.
+
+Faremos duas análises para responder a perguntas diferentes:
+
+1.  **Em relação à consulta anterior**
+    -   Mostra a **trajetória passo a passo**, ou seja, se o paciente está ganhando ou perdendo peso a cada intervalo entre consultas.\
+    -   Interessante para avaliar **flutuações** e estabilidade do peso ao longo do seguimento.\
+    -   Mais sensível a pequenas variações (até ruído de medida).
+2.  **Em relação à primeira consulta**
+    -   Mostra a **tendência acumulada** desde o início do acompanhamento.\
+    -   Interessante para avaliar **manutenção de perda/ganho** ou se houve reversão em algum ponto.\
+    -   Mais robusto e fácil de interpretar em termos clínicos (baseline como referência).
+
+Em geral, se o objetivo é **descrever a dinâmica do acompanhamento**, a comparação com a **consulta anterior** (#1) costuma ser mais informativa, pois mostra o comportamento longitudinal. Mas se o foco for **avaliar o impacto do acompanhamento em relação ao estado inicial**, a comparação com a **primeira consulta** (#2) é mais clara e útil para comunicar resultados.
+
+**Como interpretar e escolher o que reportar:**\
+- **Versus consulta anterior:** útil para descrever a **dinâmica entre visitas**, sensível a flutuações; ideal para “trajetória” do cuidado.\
+- **Versus baseline:** comunica a **tendência acumulada** desde o início; costuma ser mais estável e clinicamente intuitiva.
+
+Se o artigo tiver espaço, recomendo **reportar ambos** (principal = baseline; secundário = anterior), pois oferecem perspectivas complementares. Caso precise enxugar, priorize a definição que melhor se alinha ao objetivo do capítulo: **efeito do seguimento** (baseline) vs **padrão de flutuação** (anterior).
+
+```{r}
+#| label: função-auxiliar
+
+# Preparação: função auxiliar de IC95% para proporção
+
+ci_prop <- function(x, n, conf.level = 0.95) {
+  # x = sucessos; n = total
+  if (is.na(x) || is.na(n) || n == 0) {
+    return(tibble(prop = NA_real_, lcl = NA_real_, ucl = NA_real_))
+  }
+  pt <- stats::prop.test(x = x, n = n, conf.level = conf.level, correct = FALSE)
+  tibble(
+    prop = unname(pt$estimate),
+    lcl  = unname(pt$conf.int[1]),
+    ucl  = unname(pt$conf.int[2])
+  )
+}
+```
+
+Este chunk define `ci_prop()`, que calcula proporções com IC95% (teste de proporções com correção de continuidade desabilitada, aproximando o intervalo de Wilson).
+
+```{r}
+#| label: create-tibbles
+
+# 1) Ordenar consultas dentro de cada paciente
+# 2) Criar deltas e direções vs consulta anterior e vs baseline
+# 3) Manter apenas consultas a partir da 2ª, com peso observado
+
+obese_ord <- obese %>%
+  arrange(record_id, index, date_consultation) %>%
+  group_by(record_id) %>%
+  mutate(
+    # vs consulta anterior
+    weight_prev   = dplyr::lag(weight_kg),
+    delta_prev_kg = if_else(!is.na(weight_kg) & !is.na(weight_prev),
+                            weight_kg - weight_prev, NA_real_),
+    dir_prev = case_when(
+      is.na(delta_prev_kg)         ~ NA_character_,
+      delta_prev_kg > 0            ~ "ganho",
+      delta_prev_kg < 0            ~ "perda",
+      delta_prev_kg == 0           ~ "estável"
+    ),
+    # vs baseline (utiliza baseline_weight fornecido no dataset)
+    delta_base_kg = if_else(!is.na(weight_kg) & !is.na(baseline_weight),
+                            weight_kg - baseline_weight, NA_real_),
+    dir_base = case_when(
+      is.na(delta_base_kg)         ~ NA_character_,
+      delta_base_kg > 0            ~ "ganho",
+      delta_base_kg < 0            ~ "perda",
+      delta_base_kg == 0           ~ "estável"
+    )
+  ) %>%
+  ungroup()
+
+# Elegibilidade: consultas a partir da segunda e com comparador válido
+ eleg_prev <- obese_ord %>%
+  filter(index >= 2, !is.na(delta_prev_kg), !is.na(dir_prev))
+
+ eleg_base <- obese_ord %>%
+  filter(index >= 2, !is.na(delta_base_kg), !is.na(dir_base))
+```
+
+Aqui organizamos o banco por paciente e consulta, criamos as diferenças de peso em kg vs a consulta anterior e vs a baseline, rotulando cada consulta (≥2ª) como “ganho”, “perda” ou “estável”. Geramos dois subconjuntos elegíveis: `eleg_prev` (comparação com a anterior) e `eleg_base` (comparação com a baseline).
+
+```{r}
+#| label: proporcoes-1.7
+
+# Função para sumarizar proporções por direção (ganho/perda/estável)
+# Ela calcula os ICs com `ci_prop()` e faz `bind_cols()` de forma explícita.
+
+sumarizar_proporcoes <- function(df, dir_col) {
+  # 1) Contagens básicas
+  base <- df %>%
+    summarize(
+      total_consultas = dplyr::n(),
+      n_ganho   = sum(.data[[dir_col]] == "ganho",   na.rm = TRUE),
+      n_perda   = sum(.data[[dir_col]] == "perda",   na.rm = TRUE),
+      n_estavel = sum(.data[[dir_col]] == "estável", na.rm = TRUE)
+    )
+
+  # 2) IC95% por direção (devolve data.frames 1x3)
+  ci_g <- ci_prop(base$n_ganho,   base$total_consultas) %>%
+    dplyr::rename(prop_ganho = prop, lcl_ganho = lcl, ucl_ganho = ucl)
+
+  ci_p <- ci_prop(base$n_perda,   base$total_consultas) %>%
+    dplyr::rename(prop_perda = prop, lcl_perda = lcl, ucl_perda = ucl)
+
+  ci_e <- ci_prop(base$n_estavel, base$total_consultas) %>%
+    dplyr::rename(prop_estavel = prop, lcl_estavel = lcl, ucl_estavel = ucl)
+
+  # 3) Juntar tudo de forma determinística
+  out <- dplyr::bind_cols(base, ci_g, ci_p, ci_e) %>%
+    dplyr::mutate(
+      prop_ganho_pct   = scales::percent(prop_ganho,   accuracy = 0.1),
+      prop_perda_pct   = scales::percent(prop_perda,   accuracy = 0.1),
+      prop_estavel_pct = scales::percent(prop_estavel, accuracy = 0.1),
+      ic_ganho   = sprintf("ganho (%.1f%%; IC95%% %.1f%%–%.1f%%)",
+                           100*prop_ganho, 100*lcl_ganho, 100*ucl_ganho),
+      ic_perda   = sprintf("perda (%.1f%%; IC95%% %.1f%%–%.1f%%)",
+                           100*prop_perda, 100*lcl_perda, 100*ucl_perda),
+      ic_estavel = sprintf("estável (%.1f%%; IC95%% %.1f%%–%.1f%%)",
+                           100*prop_estavel, 100*lcl_estavel, 100*ucl_estavel)
+    ) %>%
+    dplyr::select(
+      total_consultas,
+      n_ganho, n_perda, n_estavel,
+      prop_ganho_pct, prop_perda_pct, prop_estavel_pct,
+      ic_ganho, ic_perda, ic_estavel
+    )
+
+  out
+}
+
+# 1) Proporções vs consulta anterior
+res_prev <- sumarizar_proporcoes(eleg_prev, "dir_prev")
+
+# 2) Proporções vs baseline
+res_base <- sumarizar_proporcoes(eleg_base, "dir_base")
+
+res_prev
+res_base
+```
+
+Este chunk calcula, para todas as consultas elegíveis (≥2ª), as proporções e IC95% de “ganho”, “perda” e “estável” sob duas definições: 1. vs consulta anterior (res_prev) — dinâmica entre visitas consecutivas; 2. vs baseline (res_base) — tendência acumulada desde a primeira consulta.
+
+As tabelas retornam o número total de consultas analisadas, contagens por direção e as proporções com IC95%.
+
+```{r}
+#| label: tabela-1.7
+#| message: false
+# Tabelas prontas para o artigo (formato longo e legível)
+
+formatar_tabela <- function(tb, titulo) {
+  tibble::tibble(
+    Definição = titulo,
+    `Consultas elegíveis (n)` = tb$total_consultas,
+    `Ganho, n (%) [IC95%]`    = sprintf("%d (%s) — %s", tb$n_ganho, tb$prop_ganho_pct, tb$ic_ganho),
+    `Perda, n (%) [IC95%]`    = sprintf("%d (%s) — %s", tb$n_perda, tb$prop_perda_pct, tb$ic_perda),
+    `Estável, n (%) [IC95%]`  = sprintf("%d (%s) — %s", tb$n_estavel, tb$prop_estavel_pct, tb$ic_estavel)
+  )
+}
+
+tab_prev <- formatar_tabela(res_prev, "Em relação à consulta anterior")
+tab_base <- formatar_tabela(res_base, "Em relação à primeira consulta (baseline)")
+
+knitr::kable(
+  rbind(tab_prev, tab_base),
+  caption = "Proporção de consultas (a partir da segunda) com ganho, perda ou estabilidade de peso",
+  align = c("l", "r", "l", "l", "l"),
+  col.names = c("Definição", "Consultas elegíveis (n)", "Ganho, n (%) [IC95%]", "Perda, n (%) [IC95%]", "Estável, n (%) [IC95%]")
+)
+
+```
+
+Aqui formatamos duas tabelas finais, prontas para inserir no relatório/artigo: uma em relação à consulta anterior e outra em relação à baseline. Cada linha traz o total de consultas analisadas, a contagem e a proporção (%) com IC95% para “ganho”, “perda” e “estável”.
+
+> Resultados:\
+> Entre as consultas analisadas a partir da segunda visita, observou-se que **44,1% (IC95% 42,1–46,1)** apresentaram ganho de peso em relação à consulta imediatamente anterior, enquanto **53,4% (IC95% 51,4–55,4)** mostraram perda de peso e **2,5% (IC95% 2,0–3,3)** permaneceram estáveis.\
+> Quando a referência foi a primeira consulta (baseline), os resultados evidenciaram uma tendência acumulada diferente: **35,7% (IC95% 33,9–37,6)** das consultas estavam associadas a ganho de peso em relação ao basal, **59,7% (IC95% 57,8–61,5)** a perda de peso, e **4,6% (IC95% 3,8–5,4)** mantiveram peso estável.\
+> Portanto, embora a análise **visita a visita** revele flutuações mais frequentes de ganho e perda, a comparação **com o peso inicial** sugere que, no seguimento acumulado, predominou a perda de peso.\
+
+> Discussão:\
+> A análise longitudinal de perda de peso mostrou padrões distintos conforme o critério de referência utilizado. Considerando-se a consulta imediatamente anterior, a evolução do peso revelou **alta variabilidade**, com proporções semelhantes de consultas com ganho e perda, refletindo as oscilações individuais e possivelmente influências transitórias de fatores comportamentais, clínicos ou mesmo variações técnicas de medida.\
+> Por outro lado, quando o peso inicial foi adotado como referência, observou-se uma **tendência global de perda de peso** ao longo do seguimento, evidenciada por maior proporção de consultas classificadas como perda em relação ao basal. Este resultado sugere que, apesar das flutuações entre visitas, o acompanhamento clínico contribuiu para um saldo positivo na redução de peso em termos cumulativos.\
+> A diferença entre os dois enfoques analíticos é relevante. A comparação visita a visita é mais sensível a pequenas variações, que podem representar tanto mudanças reais quanto ruído de mensuração. Já a comparação acumulada com o peso basal tende a capturar melhor o efeito do seguimento como um todo, sendo clinicamente mais intuitiva para avaliar impacto do tratamento.\
+> Do ponto de vista clínico, a predominância de perda de peso acumulada sugere benefício do acompanhamento, mas a presença consistente de oscilações reforça a necessidade de estratégias para manutenção do peso e prevenção do reganho.
+
+```{r}
+#| label: opcional-subgrupos
+#| message: false
+
+# (Opcional) Exemplo de estratificação por tempo de seguimento ou por sexo/etnia
+# Ajuste os "group_by" conforme sua necessidade analítica.
+
+# Ex.: estratificar por sexo para a definição "vs consulta anterior"
+# Correção robusta para estratificar por SEXO.
+# Evita problemas de coluna ausente ou conflitos de nomes após o join.
+# Correção para o erro: “Can't subset `.data` outside of a data mask context.”
+# Isso ocorre quando usamos `.data[[grp_col]]` fora de verbos *data-masked* do dplyr
+# (ex.: dentro de `select()` ou `complete()` sem embrulhar com tidy evaluation).
+# Abaixo, reescrevo a função usando tidy evaluation com `{{ }}` e `all_of()`.
+
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(rlang)
+
+# Lookup "many-to-one" para sexo por paciente
+lkp_sex <- obese %>%
+  distinct(record_id, sex) %>%
+  rename(sex_lookup = sex)
+
+# Função robusta: usa tidy evaluation para permitir `grp_col` como string ou símbolo
+sumarizar_proporcoes_grupo <- function(df, dir_col, grp_col) {
+  # capturar colunas como símbolos
+  dir_col <- enquo(dir_col)
+  grp_col <- enquo(grp_col)
+
+  # total por grupo
+  tot <- df %>%
+    group_by(!!grp_col) %>%
+    summarize(total_consultas = n(), .groups = "drop")
+
+  # contagens por direção dentro de cada grupo
+  cont <- df %>%
+    group_by(!!grp_col, direcao = !!dir_col) %>%
+    summarize(n = n(), .groups = "drop")
+
+  # garantir as três categorias em cada grupo
+  base <- cont %>%
+    tidyr::complete(
+      !!grp_col,
+      direcao = c("ganho","perda","estável"),
+      fill = list(n = 0)
+    ) %>%
+    left_join(tot, by = rlang::as_name(grp_col))
+
+  # calcular IC95% por linha
+  out <- base %>%
+    mutate(ci = map2(n, total_consultas, ~ci_prop(.x, .y))) %>%
+    unnest(ci) %>%
+    mutate(
+      pct = scales::percent(prop, accuracy = 0.1),
+      ic  = sprintf("%s (%s; IC95%% %.1f%%–%.1f%%)", direcao, pct, 100*lcl, 100*ucl)
+    ) %>%
+    select(
+      grupo = !!grp_col,
+      direcao, n, total_consultas, ic
+    )
+
+  out
+}
+
+# Aplicar à definição "vs consulta anterior" (dir_prev) estratificando por sexo
+res_prev_by_sex <- eleg_prev %>%
+  left_join(lkp_sex, by = "record_id") %>%
+  filter(!is.na(sex_lookup)) %>%
+  sumarizar_proporcoes_grupo(dir_col = dir_prev, grp_col = sex_lookup) %>%
+  rename(sex = grupo)
+
+res_prev_by_sex
+
+# Testes simples (bicaudais) de diferença de proporções entre sexos
+# 1) Proporção de PERDA por sexo
+loss_F <- res_prev_by_sex %>% dplyr::filter(sex == "F", direcao == "perda")
+loss_M <- res_prev_by_sex %>% dplyr::filter(sex == "M", direcao == "perda")
+test_perda <- stats::prop.test(
+  x = c(loss_F$n, loss_M$n),
+  n = c(loss_F$total_consultas, loss_M$total_consultas),
+  correct = FALSE
+)
+
+# 2) Proporção de GANHO por sexo
+gain_F <- res_prev_by_sex %>% dplyr::filter(sex == "F", direcao == "ganho")
+gain_M <- res_prev_by_sex %>% dplyr::filter(sex == "M", direcao == "ganho")
+test_ganho <- stats::prop.test(
+  x = c(gain_F$n, gain_M$n),
+  n = c(gain_F$total_consultas, gain_M$total_consultas),
+  correct = FALSE
+)
+
+list(
+  perda = broom::tidy(test_perda)[, c("estimate1","estimate2","p.value","conf.low","conf.low","conf.high")],
+  ganho = broom::tidy(test_ganho)[, c("estimate1","estimate2","p.value","conf.low","conf.low","conf.high")]
+)
+```
+
+Este chunk cria um lookup de sex por record_id e faz o left_join() de modo previsível (coluna sex_lookup). Em seguida, a função sumarizar_proporcoes_grupo() calcula, por sexo, o número de consultas (≥2ª) com “ganho”, “perda” e “estável”, além das proporções com IC95% usando sua ci_prop(). A saída res_prev_by_sex traz, para cada sexo, n, total_consultas e o texto ic pronto para uso no artigo.
+
+> Resultados\
+> Entre as **consultas a partir da 2ª visita**, a distribuição por **sexo** foi semelhante quando a referência é a **consulta anterior**:\
+> - **Mulheres (n = 1.504 consultas):** ganho **44,2%** (IC95% 41,7–46,7), perda **53,6%** (IC95% 51,1–56,1), estável **2,2%** (IC95% 1,6–3,1).\
+> - **Homens (n = 824 consultas):** ganho **43,8%** (IC95% 40,5–47,2), perda **53,0%** (IC95% 49,6–56,4), estável **3,2%** (IC95% 2,2–4,6). Os **IC95% se sobrepõem amplamente** entre os sexos para ganho e perda, sugerindo **ausência de diferença relevante** no padrão de variação visita‑a‑visita.\
+
+> Discussão\
+> A estratificação por sexo indica padrões muito semelhantes de ganho e perda entre visitas consecutivas, com sobreposição dos IC95% e, quando testado, ausência de diferença estatisticamente significativa (prop.test) nas proporções de perda/ganho entre mulheres e homens. Esses achados sugerem que, no curto intervalo entre consultas, o sexo não é um determinante importante das oscilações de peso. Em termos clínicos, isso reforça a necessidade de estratégias de manutenção e adesão independentes do sexo, focalizando fatores comportamentais e de seguimento que possam modular as variações visita‑a‑visita.\
+
+# 2. Análises pelo tempo de seguimento
+
+## 2.1. Comparar a porcentagem máxima de perda de peso entre seguimento ≤12 meses e \>12 meses, ajustando por sexo, etnia, idade, IMC inicial, (comorbidades e uso de medicação).
+
+```{r}
+#| label: perda-maxima-seguimento
+
+library(lme4)
+library(broom.mixed)
+
+# calcular perda máxima individual, tratando NAs
+perda_maxima <- obese %>%
+  group_by(record_id) %>%
+  summarize(
+    perda_max = ifelse(all(is.na(percent_weight_loss)), 
+                       NA_real_, 
+                       max(percent_weight_loss, na.rm = TRUE)),
+    sexo = first(sex),
+    etnia = first(race),
+    idade_inicial = first(age),
+    imc_inicial = first(bmi),
+    tempo_seguimento_meses = max(week_consultation, na.rm = TRUE) / 4.345,
+    n_consultas = max(index, na.rm = TRUE),  # número de consultas
+    .groups = "drop"
+  ) %>%
+  mutate(
+    grupo_tempo = ifelse(tempo_seguimento_meses <= 12, "≤12m", ">12m") %>% 
+      factor(levels = c("≤12m", ">12m"))
+  )
+
+# modelo linear ajustado
+modelo_perda <- lm(
+  perda_max ~ grupo_tempo + sexo + etnia + idade_inicial + imc_inicial,
+  data = perda_maxima
+)
+
+# resultados com IC95%
+resultado_perda <- broom::tidy(modelo_perda, conf.int = TRUE)
+resultado_perda
+```
+
+O código acima calcula a perda máxima de peso (%) por paciente em relação ao basal e classifica os indivíduos conforme o tempo de seguimento em dois grupos: até 12 meses e acima de 12 meses. Em seguida, ajusta um modelo linear incluindo as covariáveis sexo, etnia, idade inicial e IMC inicial. A saída apresenta os coeficientes estimados, erros-padrão, valores de p e intervalos de confiança de 95%.
+
+Assim poderemos comparar diretamente se pacientes acompanhados por mais de 12 meses tiveram perda máxima significativamente diferente daqueles acompanhados por até 12 meses, controlando pelas variáveis demográficas e clínicas de interesse.
+
+> Interpretação:\
+> - **Intercepto** (-5,17; IC95% -8,85 a -1,50; p=0,0059). Representa a perda máxima média estimada no grupo de referência: pacientes com seguimento ≤12 meses, sexo feminino, etnia branca (categoria de referência), idade e IMC inicial = 0 (variáveis contínuas centralizadas fariam a interpretação mais intuitiva, mas aqui serve só como base).\
+> - **Grupo \>12m** (β = 4,74; IC95% 3,45 a 6,02; p \< 0,001). Indivíduos com seguimento maior que 12 meses tiveram, em média, 4,7 pontos percentuais a mais de perda máxima de peso em comparação ao grupo ≤12 meses, após ajuste por sexo, etnia, idade e IMC inicial. Esse é o achado principal.\
+> - **Sexo masculino** (β = 0,10; IC95% -1,22 a 1,42; p = 0,89). Não houve diferença significativa entre homens e mulheres na perda máxima.\
+> - **Etnia** (Mulato/Pardo, Preto, VERIFICAR). Nenhuma das categorias apresentou efeito significativo comparado à referência (Branco). Intervalos de confiança amplos incluem zero.\
+> - **Idade** inicial (β = 0,019; IC95% -0,031 a 0,069; p = 0,45). Idade não se associou à perda máxima.\
+> - **IMC inicial** (β = 0,136; IC95% 0,083 a 0,189; p \< 0,001). Pacientes com IMC mais alto no início tiveram perda máxima maior. Cada aumento de 1 ponto no IMC inicial associou-se a +0,14% de perda máxima.
+
+> Resultado:\
+> Após ajuste por sexo, etnia, idade e IMC inicial, o tempo de seguimento mostrou associação significativa com a perda máxima de peso. Pacientes acompanhados por mais de 12 meses apresentaram, em média, 4,7 pontos percentuais a mais de perda máxima em relação aos que tiveram seguimento de até 12 meses (IC95%: 3,5–6,0; p\<0,001). Entre as variáveis de ajuste, apenas o IMC inicial se associou significativamente à perda máxima, indicando que indivíduos com maior IMC basal apresentaram perdas percentuais mais expressivas. Sexo, idade e etnia não mostraram associação estatisticamente significativa.\
+
+```{r}
+#| label: emmeans-perda-maxima
+library(emmeans)
+
+# 1) Estimar EMMs direto do modelo (não depender de objetos anteriores)
+emm <- emmeans(modelo_perda, ~ grupo_tempo)
+
+# 2) Tabela para o gráfico (garante ordem dos níveis)
+emm_tabela <- summary(emm, infer = TRUE) %>%
+  as.data.frame() %>%
+  mutate(grupo_tempo = factor(grupo_tempo, levels = c("≤12m", ">12m")))
+
+emm_tabela
+
+```
+
+| Tempo de seguimento | Perda máxima ajustada (%) | Erro padrão | IC95% | p-valor |
+|---------------|---------------|---------------|---------------|---------------|
+| ≤12m | 1,82 | 1,32 | -0,78 – 4,42 | 0,170 |
+| \>12m | 6,56 | 1,29 | 4,01 – 9,10 | \<0,001 |
+
+> Resultado:\
+> A média ajustada de perda máxima foi de 1,8% (IC95%: -0,8 – 4,4) entre os pacientes acompanhados por até 12 meses e de 6,6% (IC95%: 4,0 – 9,1) entre aqueles acompanhados por mais de 12 meses. A diferença entre os grupos foi estatisticamente significativa (p\<0,001), indicando que um maior tempo de seguimento esteve associado a maiores perdas percentuais de peso, independentemente de sexo, etnia, idade e IMC inicial.\
+
+```{r}
+#| label: fig-perda-maxima-ajustada
+#| fig.cap: "Estimativas ajustadas de perda máxima de peso (%) por tempo de seguimento, com IC95%."
+#| fig.width: 6
+#| fig.height: 4
+#| message: false
+#| warning: false
+
+# Pré-requisitos deste chunk:
+# - objeto `emm` já criado por:    emm <- emmeans(modelo_perda, ~ grupo_tempo)
+# - objeto `emm_tabela` já criado: emm_tabela <- summary(emm, infer = TRUE) |> as.data.frame() |> ...
+# - `grupo_tempo` com níveis na ordem c("≤12m", ">12m")
+
+library(ggplot2)
+
+# 1) Contraste explicitamente definido como (>12m - ≤12m) para Δ positivo
+contraste <- contrast(emm, method = list(">12m - ≤12m" = c(-1, 1)))
+contraste_sum <- summary(contraste, infer = TRUE) |> as.data.frame()
+
+# 2) Subtítulo com Δ (diferença de médias ajustadas), IC95% e p-valor (formatação PT-BR)
+p_txt <- ifelse(
+  contraste_sum$p.value[1] < 0.001, "p < 0,001",
+  paste0("p = ", format(round(contraste_sum$p.value[1], 3), decimal.mark = ","))
+)
+
+diff_txt <- paste0(
+  "Δ = ", format(round(contraste_sum$estimate[1], 2), decimal.mark = ","), "% ",
+  "(IC95% ",
+  format(round(contraste_sum$lower.CL[1], 2), decimal.mark = ","), "–",
+  format(round(contraste_sum$upper.CL[1], 2), decimal.mark = ","), "); ",
+  p_txt
+)
+
+# 3) Gráfico usando a TABELA CORRETA: `emm_tabela` (não `emm_sum`)
+ggplot(emm_tabela, aes(x = grupo_tempo, y = emmean)) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), width = 0.08, linewidth = 0.6) +
+  geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.3) +
+  labs(
+    x = "Tempo de seguimento",
+    y = "Perda máxima ajustada (%)",
+    title = "Perda máxima ajustada por tempo de seguimento",
+    subtitle = diff_txt,
+    caption = "Modelo linear ajustado por sexo, etnia, idade e IMC inicial; EMMs com IC95%."
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+> Legenda:\
+> Após ajuste por sexo, etnia, idade e IMC inicial, a média ajustada de perda máxima foi de 1,8% (IC95%: –0,8 a 4,4) no grupo com seguimento ≤12 meses e de 6,6% (IC95%: 4,0 a 9,1) no grupo com seguimento \>12 meses. A diferença entre os grupos foi de 4,7 pontos percentuais (IC95%: 3,5–6,0; p \< 0,001), indicando que maior tempo de seguimento esteve associado a perdas percentuais mais expressivas de peso.
+
+## 2.2. Avaliar associação da perda de peso máxima com variáveis demográficas, (clínicas) e de seguimento.
+
+```{r}
+#| label: regressao-perda-maxima
+#| message: false
+#| warning: false
+
+library(dplyr)
+library(broom)
+
+# regressão linear múltipla
+modelo_perda <- lm(
+  perda_max ~ sexo + etnia + idade_inicial + imc_inicial + 
+    tempo_seguimento_meses + n_consultas,
+  data = perda_maxima
+)
+
+# resumo com IC95%
+resultado_perda <- broom::tidy(modelo_perda, conf.int = TRUE)
+
+resultado_perda
+```
+
+O código mostrado executa uma **regressão linear múltipla** para investigar quais variáveis estão associadas à **perda de peso máxima (%)** em relação ao peso basal.
+
+> Interpretação
+
+-   `Intercepto`: −7,73 (IC95%: −11,3; −4,20). Representa a perda máxima média prevista para o grupo de referência (mulheres brancas, com idade e IMC = 0, sem consultas/tempo), apenas um parâmetro de ajuste.\
+-   `Sexo`: Não houve diferença significativa de perda máxima entre homens e mulheres (β = −0,03; IC95% −1,28 a 1,22; p = 0,96).\
+-   `Etnia` não se associou à perda máxima.\
+-   `Idade` não se associou à perda máxima (β = 0,01; IC95% −0,04 a 0,06; p = 0,62).\
+-   `IMC inicial`: Cada unidade a mais de IMC no início associou-se a **+0,16% de perda máxima de peso** (β = 0,16; IC95% 0,09 a 0,23; p \< 0,001).\
+-   `Tempo de seguimento` (meses): Tendência de maior perda em seguimentos mais longos, mas sem significância estatística (β = 0,01; IC95% −0,0004 a 0,03; p = 0,05).\
+-   `Número de consultas`: Cada consulta adicional esteve associada a **+0,65% de perda máxima de peso**, associação robusta (β = 0,65; IC95% 0,39 a 0,90; p \< 0,001).\
+
+> Resultado:\
+> O modelo mostra que, após ajuste por sexo, etnia, idade e IMC inicial:\
+> - Maior IMC inicial e maior número de consultas foram independentemente associados a maior perda máxima de peso relativa ao basal.\
+> - Variáveis como sexo, etnia e idade não apresentaram associações estatisticamente significativas.\
+> - Houve uma tendência de associação positiva entre tempo de seguimento e perda máxima, mas sem atingir significância convencional (p ≈ 0,056).\
+> Em termos clínicos, o achado reforça a importância do acompanhamento em múltiplas consultas para favorecer maior perda de peso, e sugere que indivíduos com IMC inicial mais elevado apresentam maiores magnitudes de perda percentual.\
+
+| Variável                | β (Estimativa) | IC95% (LI – LS) | p-valor |
+|-------------------------|---------------:|----------------:|--------:|
+| Intercepto              |          −7,73 |   −11,3 – −4,20 | \<0,001 |
+| Sexo (M vs F)           |          −0,03 |    −1,28 – 1,22 |    0,96 |
+| Etnia (Pardo vs Branco) |          −0,26 |    −1,87 – 1,36 |    0,76 |
+| Etnia (Preto vs Branco) |          −1,80 |    −3,95 – 0,37 |    0,10 |
+| Etnia (VERIFICAR)       |           0,38 |    −0,84 – 1,60 |    0,54 |
+| Idade inicial (anos)    |           0,01 |    −0,04 – 0,06 |    0,62 |
+| IMC inicial (kg/m²)     |           0,16 |     0,09 – 0,23 | \<0,001 |
+| Tempo de seguimento (m) |           0,01 |  −0,0004 – 0,03 |   0,056 |
+| Nº de consultas         |           0,65 |     0,39 – 0,90 | \<0,001 |
+
+## 2.3. Descrever o momento em que cada indivíduo atingiu ≥5% de perda em relação ao peso inicial.
+
+```{r}
+#| label: perda-5-momento
+#| message: false
+#| warning: false
+
+# identificar primeira consulta em que cada paciente atingiu perda ≥5%
+momento_perda5 <- obese %>%
+  group_by(record_id) %>%
+  filter(!is.na(percent_weight_loss)) %>%
+  arrange(date_consultation) %>%
+  mutate(alvo_atingido = percent_weight_loss >= 5) %>%  # CORRETO: perda ≥5%
+  filter(alvo_atingido) %>%
+  slice_min(date_consultation, with_ties = FALSE) %>%
+  ungroup()
+```
+
+O código agrupa os dados por paciente (record_id) e verifica em ordem cronológica a primeira consulta em que a perda percentual de peso em relação ao basal foi ≥5% (ou seja, percent_weight_loss \>= 5). O dataframe `momento_perda5` resultante descreve, para cada indivíduo, quando e em qual consulta foi registrada pela primeira vez a perda de pelo menos 5% em relação ao peso inicial.
+
+```{r}
+#| label: resumo-perda-5
+
+resumo_perda5 <- momento_perda5 %>%
+  ungroup() %>%
+  summarize(
+    n_total = n_distinct(obese$record_id),                           # total de pacientes
+    n_atingiram = n_distinct(record_id),                             # nª que atingiu ≥5%
+    prop_atingiram = n_atingiram / n_total,                          # proporção
+    mediana_meses = median(week_consultation / 4.345, na.rm = TRUE), # tempo mediano em meses
+    iqr_meses = IQR(week_consultation / 4.345, na.rm = TRUE),        # IQR em meses
+    mediana_consulta = median(index, na.rm = TRUE),                  # consulta mediana
+    iqr_consulta = IQR(index, na.rm = TRUE)
+  )
+knitr::kable(
+  resumo_perda5,
+  caption = "Resumo do momento em que os pacientes atingiram pela primeira vez perda de peso ≥5% em relação ao peso inicial",
+  col.names = c("Total de pacientes", "Nº que atingiu ≥5%", "Proporção (%)", "Mediana (meses)", "IQR (meses)", "Mediana (consulta)", "IQR (consulta)"),
+  align = c("r", "r", "r", "r", "r", "r", "r")
+)
+```
+
+> Resultados:\
+> Entre os 574 pacientes acompanhados, apenas 221 (38,5%) atingiram uma perda de peso ≥ 5% em relação ao peso inicial durante o seguimento. O tempo mediano até alcançar essa meta foi de aproximadamente 10,1 meses (IIQ 15,0), ocorrendo tipicamente na 4ª consulta (IIQ 3).\
+
+# 3. Subgrupo com perda ≥5% (`alvo_atingido`)
+
+## 3.1. Identificar o tempo e a consulta da primeira observação de perda ≥5%.
+
+> Resultados:\
+> Entre os pacientes que alcançaram a meta de perda ≥5% (n = 221), o tempo mediano até o alcance foi de 10,1 meses (IIQ 15,0), correspondendo em média à 4ª consulta (IIQ 3).\
+
+## 3.2. Explorar o padrão de peso após atingir essa meta.
+
+O que será feito e por quê:\
+- Definição do evento clínico de reganho: queda abaixo de 5% após atingir a meta (com opção de duas medidas consecutivas para reduzir ruído).\
+- Medidas de frequência:\
+- Proporção que reganhou alguma vez (cumulativa).\
+- Taxa de incidência por 100 pessoa‑anos (tempo até o primeiro reganho).\
+- Sobrevida de manutenção em 6 e 12 meses (Kaplan–Meier), com mediana do tempo até reganho quando aplicável.\
+- Magnitude do reganho:\
+- Reganho ≥50% do peso perdido em relação ao nadir (tempo e proporção).\
+- Padrão longitudinal:\
+- Oscilações (cruzamentos do limiar).\
+- Proporção do tempo em manutenção (≥5%).\
+
+Essas métricas cobrem frequência, tempo e magnitude, fornecendo uma visão clínica completa do comportamento do grupo que atingiu ≥5% de perda.
+
+```{r}
+#| label: definicoes-reganho
+#| message: false
+#| warning: false
+
+library(dplyr)
+library(lubridate)
+library(survival)
+
+# ---- pressupostos do dataset ----
+# percent_weight_loss > 0  => perda de peso relativa ao basal
+# percent_weight_loss < 0  => ganho de peso relativa ao basal
+# Atingiu a meta: percent_weight_loss >= 5
+
+# ---- objetos de apoio já existentes (da seção 2.3) ----
+# momento_perda5: 1ª consulta em que cada paciente atingiu >=5% (uma linha por paciente)
+# Campos úteis: record_id, date_consultation (t0), index, week_consultation
+
+# ---- parâmetros (ajuste conforme necessidade clínica/robustez) ----
+# Confirmação de reganho: exigir 2 medidas consecutivas <5%? (TRUE = mais robusto, reduz ruído)
+confirmar_duas_consec <- FALSE
+
+# Conversão semanas -> meses (média de 4,345 semanas/mês)
+semana_para_mes <- function(x) x / 4.345
+```
+
+No bloco acima eu fixo as regras de sinal (perda positiva), declaro que ≥5% define a meta atingida, e deixo parâmetros explícitos para controlar a robustez da definição de reganho (opcionalmente exigindo duas medidas consecutivas \<5%). Também crio um helper para converter semanas em meses.
+
+```{r}
+#| label: coorte-pos-meta
+#| message: false
+#| warning: false
+
+# Trajetória de cada paciente APÓS atingir >=5% (inclui a própria consulta da meta)
+traj_pos_meta <- obese %>%
+  inner_join(
+    momento_perda5 %>%
+      select(record_id, t0_date = date_consultation, t0_week = week_consultation),
+    by = "record_id"
+  ) %>%
+  # manter apenas linhas na data da meta ou depois
+  filter(date_consultation >= t0_date) %>%
+  arrange(record_id, date_consultation) %>%
+  group_by(record_id) %>%
+  mutate(
+    # tempo desde a meta (semanas/meses)
+    weeks_since_t0 = week_consultation - first(t0_week),
+    months_since_t0 = semana_para_mes(weeks_since_t0),
+    # indicadores de status em relação ao limiar de manutenção (>=5%)
+    maint_ge5 = percent_weight_loss >= 5,
+    below5    = percent_weight_loss < 5
+  ) %>%
+  ungroup()
+```
+
+Aqui eu defino a trajetória pós-meta (`traj_pos_meta`): para quem atingiu ≥5%, guardo todas as observações da data da meta em diante e calculo o tempo desde a meta em semanas (`weeks_since_t0`) e meses (`months_since_t0`). Também crio indicadores lógicos úteis: `maint_ge5` (mantém ≥5%) e `below5` (caiu abaixo de 5%).
+
+```{r}
+#| label: primeira-queda-abaixo5
+
+# Função auxiliar para detectar o 1º "evento de reganho" (cair <5%)
+#   - Se confirmar_duas_consec = TRUE: exige 2 medidas consecutivas <5%
+#   - Caso contrário: 1 medida <5% já conta como evento
+
+detectar_primeiro_reganho <- function(below5_vec, dates_vec) {
+  n <- length(below5_vec)
+  if (n == 0) return(NA)
+  if (confirmar_duas_consec) {
+    # evento na SEGUNDA <5% consecutiva
+    flag <- below5_vec & dplyr::lag(below5_vec, default = FALSE)
+  } else {
+    # qualquer <5% já é evento
+    flag <- below5_vec
+  }
+  if (!any(flag, na.rm = TRUE)) {
+    return(NA)
+  } else {
+    i <- which(flag)[1]
+    return(dates_vec[i])
+  }
+}
+
+reganho_primeiro <- traj_pos_meta %>%
+  group_by(record_id) %>%
+  summarize(
+    t0_date      = first(t0_date),
+    t_event_date = detectar_primeiro_reganho(below5, date_consultation),
+    # status final e tempos
+    event        = !is.na(t_event_date),
+    time_to_event_months = ifelse(event,
+                                  as.numeric((t_event_date - t0_date) / 7) / 4.345,
+                                  as.numeric((last(date_consultation) - t0_date) / 7) / 4.345
+                                  ),
+    .groups = "drop"
+  )
+```
+
+Defino o primeiro evento de reganho: queda abaixo de 5% após atingir a meta (com ou sem confirmação de duas medidas consecutivas). Produzo um dataset com indicador de evento (`event`) e tempo até o evento em meses (`t_event_date`) ou tempo de censura (se nunca reganhou até a última observação).
+
+```{r}
+#| label: medidas-frequencia-reganho
+
+# 1) Frequência cumulativa (proporção que reganhou em algum momento)
+n_subgrupo      <- n_distinct(reganho_primeiro$record_id)
+n_eventos       <- sum(reganho_primeiro$event, na.rm = TRUE)
+prop_evento     <- n_eventos / n_subgrupo
+
+# 2) Taxa de incidência (1º reganho) por 100 pessoa-anos
+#    (tempo em meses -> anos; pessoa-tempo até evento ou censura)
+pessoa_tempo_anos <- sum(reganho_primeiro$time_to_event_months, na.rm = TRUE) / 12
+taxa_inc_100py    <- (n_eventos / pessoa_tempo_anos) * 100
+
+# 3) Sobrevida de manutenção >=5% (Kaplan-Meier)
+fit_km <- survfit(Surv(time_to_event_months, event) ~ 1, data = reganho_primeiro)
+
+# probabilidades de "manutenção" (não reganho) em 6 e 12 meses
+S6  <- summary(fit_km, times = 6)$surv
+S12 <- summary(fit_km, times = 12)$surv
+
+# 4) Tempo mediano até reganho (se ao menos 50% apresentaram o evento)
+mediana_tempo_reganho <- if (!is.na(fit_km$time[which.max(fit_km$surv <= 0.5)])) {
+  summary(fit_km)$table["median"]
+} else {
+  NA
+}
+
+tabela_freq_reganho <- tibble::tibble(
+  `Pacientes com ≥5% (n)` = n_subgrupo,
+  `Reganho (n)`           = n_eventos,
+  `Proporção (%)`         = 100 * prop_evento,
+  `Taxa (100 pessoa-anos)`= taxa_inc_100py,
+  `Manutenção 6m (KM, %)` = 100 * ifelse(length(S6) == 0, NA, S6),
+  `Manutenção 12m (KM, %)`= 100 * ifelse(length(S12) == 0, NA, S12),
+  `Mediana até reganho (meses)` = as.numeric(mediana_tempo_reganho)
+)
+
+knitr::kable(
+  tabela_freq_reganho,
+  caption = "Medidas de frequência de reganho de peso após atingir perda ≥5%",
+  digits = c(0, 0, 1, 1, 1, 1, 1)
+)
+
+```
+
+Este bloco entrega medidas de frequência clinicamente úteis:\
+1. Proporção que teve reganho (alguma vez);\
+2. Taxa de incidência do primeiro reganho (por 100 pessoa‑anos);\
+3. Probabilidade de manutenção em 6 e 12 meses via Kaplan–Meier;\
+4. Mediana do tempo até reganho (se ao menos metade apresentou evento).\
+
+Definição de reganho:\
+- O paciente atinge a meta (≥5% de perda) em algum momento.\
+- Posteriormente, se ele volta a ficar com perda \<5% em relação ao basal, isso é considerado reganho (perda do benefício clínico mínimo).\
+
+Foi essa definição que usamos:\
+- para calcular a proporção de reganho (37,6%),\
+- a taxa de incidência por 100 pessoa-anos,\
+- a curva de Kaplan–Meier de manutenção,\
+- e o tempo mediano até o evento (24,2 meses).\
+
+> Resultados:\
+> Frequência de reganho (primeira queda abaixo de 5%)\
+> - 37,6% dos pacientes que atingiram ≥5% voltaram a ficar abaixo desse limiar em algum momento.\
+> - A taxa de incidência foi de 33,5 por 100 pessoa-anos.\
+> - A probabilidade de manter a perda ≥5% foi de 83% em 6 meses e 64,4% em 12 meses.\
+> - O tempo mediano até o reganho foi de 24,2 meses, indicando que a maioria manteve a perda por mais de 2 anos antes de recair.\
+
+```{r}
+#| label: reganho-magnitude
+
+# --- Magnitude do reganho em relação ao NADIR ---
+# Nadir = maior perda (% acima de 0) após a meta (t0)
+nadir_pos_meta <- traj_pos_meta %>%
+  group_by(record_id) %>%
+  filter(!is.na(percent_weight_loss)) %>%
+  slice_max(percent_weight_loss, with_ties = FALSE) %>%
+  transmute(record_id,
+            nadir_date  = date_consultation,
+            nadir_loss  = percent_weight_loss) %>%
+  ungroup()
+
+# Juntar nadir à trajetória pós-meta e calcular "fração do peso perdido que foi recuperado"
+traj_com_nadir <- traj_pos_meta %>%
+  inner_join(nadir_pos_meta, by = "record_id") %>%
+  mutate(
+    # fração recuperada = (perda_no_nadir - perda_no_t) / perda_no_nadir
+    # ex.: nadir_loss = 12% e no tempo t a perda é 6% => (12-6)/12 = 0,5 (reganhou 50% do que havia perdido)
+    frac_reganho = (nadir_loss - percent_weight_loss) / nadir_loss
+  )
+
+# Garante que as colunas de data são Date (não POSIXlt)
+# (ajuste se suas colunas estiverem em datetime/POSIXct e você quiser manter horas)
+traj_com_nadir <- traj_com_nadir %>%
+  mutate(date_consultation = as.Date(date_consultation),
+         nadir_date        = as.Date(nadir_date))
+
+momento_perda5 <- momento_perda5 %>%
+  mutate(t0_date = as.Date(date_consultation))
+
+# Indicadores de marcos clínicos de reganho após o nadir
+#  a) "Perdeu a manutenção": caiu <5% (já calculado antes como evento)
+#  b) "Reganhou >=50% do peso perdido" (em qualquer momento pós-nadir)
+
+# 1) Para cada paciente, selecione a 1ª data em que reganhou >=50% do que havia perdido (pós-nadir)
+t50_primeira_linha <- traj_com_nadir %>%
+  filter(date_consultation >= nadir_date, frac_reganho >= 0.5) %>%     # evento de reganho>=50%
+  group_by(record_id) %>%
+  slice_min(date_consultation, with_ties = FALSE) %>%
+  ungroup() %>%
+  select(record_id, t50_date = date_consultation)
+
+# 2) Junte com a data da meta (t0) para todos os que atingiram >=5%
+reganho50_primeiro <- momento_perda5 %>%
+  select(record_id, t0_date = date_consultation) %>%
+  left_join(t50_primeira_linha, by = "record_id") %>%
+  mutate(
+    t50_event = !is.na(t50_date),
+    # diferença em dias -> meses (30,437 = média de dias/mês gregoriano)
+    time_to_50_months = if_else(
+      t50_event,
+      as.numeric(difftime(t50_date, t0_date, units = "days")) / 30.437,
+      NA_real_
+    )
+  )
+
+# Sumário da magnitude
+sum_magnitude <- tibble::tibble(
+  `n com ≥5% (subgrupo)`      = n_subgrupo,
+  `Reganho ≥50% do perdido (n)` = sum(reganho50_primeiro$t50_event, na.rm = TRUE),
+  `Reganho ≥50% do perdido (%)` = 100 * mean(reganho50_primeiro$t50_event, na.rm = TRUE),
+  `Tempo mediano até ≥50% (meses)` = median(reganho50_primeiro$time_to_50_months, na.rm = TRUE)
+)
+
+knitr::kable(
+  sum_magnitude,
+  caption = "Magnitude do reganho de peso após atingir perda ≥5%",
+  digits = c(0, 0, 1, 1)
+)
+```
+
+Aqui eu quantifico a magnitude do reganho com base no nadir (maior perda após a meta), um marcador importante clinicamente:
+
+-   proporção que reganhou ≥50% do que tinha perdido;
+-   tempo até esse ponto.
+
+Isso complementa o “cair abaixo de 5%”, oferecendo um marcador de relevância clínica (parcial ou substancial reversão da perda).
+
+> Resultados:\
+> Magnitude do reganho (após o nadir da perda)\
+> - 29,9% dos pacientes reganharam ≥50% do peso perdido em relação ao nadir.\
+> - O tempo mediano até esse reganho substancial foi de 17,2 meses.\
+> - Isso mostra que, mesmo entre quem reganhou, levaram mais de 1 ano em média para perder metade do benefício obtido.\
+
+```{r}
+#| label: oscilacoes-e-tempo-em-manutencao
+#| message: false
+#| warning: false
+
+# --- Número de "oscilacoes" (vezes que cruza o limiar 5%) após a meta ---
+# Define uma sequência estado (>=5 vs <5) e conta mudanças de estado
+osc <- traj_pos_meta %>%
+  group_by(record_id) %>%
+  arrange(date_consultation, .by_group = TRUE) %>%
+  mutate(state = ifelse(maint_ge5, ">=5", "<5"),
+         cross = state != dplyr::lag(state, default = first(state))) %>%
+  summarize(
+    n_cruzamentos = sum(cross, na.rm = TRUE), .groups = "drop"
+  )
+
+# --- Proporção do tempo em manutenção (>=5%) ---
+# Aproximação por "segmentos": tempo entre consultas atribuído ao estado da linha atual
+tempo_estado <- traj_pos_meta %>%
+  group_by(record_id) %>%
+  arrange(date_consultation, .by_group = TRUE) %>%
+  mutate(
+    # tempo até a próxima consulta (em meses); última observação do paciente recebe NA
+    delta_meses = as.numeric(dplyr::lead(date_consultation) - date_consultation) / 7 / 4.345
+  ) %>%
+  ungroup()
+
+tempo_manutencao <- tempo_estado %>%
+  group_by(record_id) %>%
+  summarize(
+    tempo_total_meses = sum(delta_meses, na.rm = TRUE),
+    tempo_ge5_meses   = sum(ifelse(maint_ge5, delta_meses, 0), na.rm = TRUE),
+    prop_tempo_ge5    = ifelse(tempo_total_meses > 0, tempo_ge5_meses / tempo_total_meses, NA_real_),
+    .groups = "drop"
+  )
+
+# Resumo simples dessas duas métricas
+resumo_oscil_tempo <- tibble::tibble(
+  `Oscilações, mediana (IQR)` = sprintf("%.0f (%.0f–%.0f)",
+                                         median(osc$n_cruzamentos, na.rm = TRUE),
+                                         quantile(osc$n_cruzamentos, 0.25, na.rm = TRUE),
+                                         quantile(osc$n_cruzamentos, 0.75, na.rm = TRUE)),
+  `Tempo em manutenção, mediana%% (IQR)` = sprintf("%.0f (%.0f–%.0f)",
+                                                   100*median(tempo_manutencao$prop_tempo_ge5, na.rm = TRUE),
+                                                   100*quantile(tempo_manutencao$prop_tempo_ge5, 0.25, na.rm = TRUE),
+                                                   100*quantile(tempo_manutencao$prop_tempo_ge5, 0.75, na.rm = TRUE))
+)
+
+knitr::kable(
+  resumo_oscil_tempo,
+  caption = "Oscilações e tempo em manutenção após atingir perda ≥5%",
+  col.names = c("Oscilações (n)", "Tempo em manutenção (%)")
+)
+```
+
+Neste bloco eu capturo dois comportamentos pós-meta que são clinicamente interpretáveis:\
+1. Oscilações (quantas vezes cruza o limiar de 5%), uma proxy de “ioiô”;\
+2. Proporção do tempo em manutenção (≥5%), estimada por segmentos entre consultas.\
+
+> Resultados:\
+> Padrão longitudinal (oscilação e tempo em manutenção)\
+> - O número de oscilações (entrar e sair do limiar de 5%) foi baixo: mediana de 0 (IIQ 0–1). - Em termos de tempo, os pacientes passaram 78% (IIQ 44–100%) do seguimento mantendo ≥5% de perda. Esses achados sugerem que, embora uma parte dos pacientes reganhe peso após atingir a meta de ≥5%, a maioria consegue manter esse benefício por um tempo prolongado. Aproximadamente 2 em cada 3 mantêm a perda em 12 meses, e o tempo até reganho substancial (≥50% do perdido) é relativamente longo (mediana 17 meses). O padrão de oscilação foi pouco frequente, reforçando que a trajetória predominante é de manutenção estável, ao menos durante parte importante do acompanhamento.
+
+> Resultados combinados das 3 análises:\
+> Entre os 221 pacientes que atingiram perda ≥5% em relação ao peso inicial, 83 (37,6%) apresentaram reganho em algum momento do seguimento, resultando em uma taxa de incidência de 33,5 por 100 pessoa-anos. A probabilidade de manutenção da perda ≥5% foi de 83% aos 6 meses e de 64,4% aos 12 meses, com tempo mediano até o reganho de 24,2 meses. Quando considerada a magnitude do reganho em relação ao nadir, 66 indivíduos (29,9%) recuperaram ≥50% do peso previamente perdido, com tempo mediano de 17,2 meses até esse evento. O padrão longitudinal mostrou baixa frequência de oscilações em torno do limiar de 5% (mediana 0; IIQ 0–1), e a proporção do tempo em que os pacientes permaneceram com perda ≥5% foi elevada (mediana 78%; IIQ 44–100%). Esses resultados indicam que, embora parte dos pacientes experimente reganho, a maioria consegue manter a perda clinicamente relevante por períodos prolongados, com relativa estabilidade durante o acompanhamento.\
+
+> Tabela: Medidas de reganho de peso após atingir perda ≥5%
+
+| Indicador                                           | Resultado     |
+|-----------------------------------------------------|---------------|
+| Pacientes com perda ≥5% (n)                         | 221           |
+| Reganho (queda \<5%) n (%)                          | 83 (37,6%)    |
+| Taxa de incidência (100 pessoa-anos)                | 33,5          |
+| Manutenção ≥5% em 6 meses (KM, %)                   | 83%           |
+| Manutenção ≥5% em 12 meses (KM, %)                  | 64,4%         |
+| Tempo mediano até reganho \<5% (meses)              | 24,2          |
+| Reganho ≥50% do peso perdido (n, %)                 | 66 (29,9%)    |
+| Tempo mediano até reganho ≥50% (meses)              | 17,2          |
+| Oscilações em torno de 5% (mediana, IIQ)            | 0 (0–1)       |
+| Proporção do tempo em manutenção ≥5% (mediana, IIQ) | 78% (44–100%) |
+
+```{r}
+#| label: km-manutencao-5
+#| fig.cap: "Curva de Kaplan–Meier para manutenção de perda de peso ≥5% em relação ao basal."
+#| fig.width: 7
+#| fig.height: 5
+#| message: false
+#| warning: false
+
+library(survival)
+library(survminer)
+
+# Ajustar curva de sobrevivência: evento = reganho (<5%)
+fit_km <- survfit(Surv(time_to_event_months, event) ~ 1, data = reganho_primeiro)
+
+# Plot com survminer
+ggsurvplot(
+  fit_km,
+  conf.int = TRUE,
+  xlab = "Tempo desde perda ≥5% (meses)",
+  ylab = "Probabilidade de manutenção (≥5%)",
+  surv.scale = "percent",
+  break.time.by = 6,     # eixos a cada 6 meses
+  risk.table = TRUE,     # tabela de pacientes em risco
+  risk.table.height = 0.2,
+  palette = "blue",
+  ggtheme = theme_minimal(base_size = 12)
+)
+```
+
+> Legenda:\
+> A curva de Kaplan–Meier para manutenção da perda ≥5% mostra uma probabilidade elevada de sustentar a meta de perda de 5% nos primeiros meses após o alcance, com queda progressiva ao longo do seguimento. Aproximadamente 83% dos pacientes mantinham a perda em 6 meses e 64% em 12 meses. A mediana do tempo até o reganho foi de 24,2 meses, indicando que metade dos pacientes manteve o benefício clínico por pelo menos dois anos. A curva evidencia ainda que, embora haja declínio gradual, uma proporção considerável de indivíduos preservou a perda ≥5% até três anos de acompanhamento.\
+
+```{r}
+#| label: dist-tempo-ate-reganho-violin
+#| fig.cap: "Distribuição do tempo até o reganho (<5%) entre quem atingiu ≥5%: violino + boxplot."
+#| fig.width: 6
+#| fig.height: 4
+#| message: false
+#| warning: false
+
+library(dplyr)
+library(ggplot2)
+
+# manter apenas quem teve evento de reganho (<5%)
+df_evento <- reganho_primeiro %>%
+  filter(event) %>%
+  transmute(time_to_event_months)
+
+# calcular a mediana
+mediana_val <- median(df_evento$time_to_event_months, na.rm = TRUE)
+
+mediana_val
+
+# gráfico violino + boxplot + pontos + linha de mediana destacada
+ggplot(df_evento, aes(x = "", y = time_to_event_months)) +
+  geom_violin(trim = FALSE, alpha = 0.4, fill = "grey80") +
+  geom_boxplot(width = 0.15, outlier.shape = NA, fill = "white") +
+  geom_jitter(width = 0.08, alpha = 0.3, size = 1) +
+  geom_hline(yintercept = mediana_val, linetype = "dashed", color = "red", linewidth = 1) +
+  #annotate("text", x = 1.2, y = mediana_val,
+  #         label = paste0("Mediana: ", round(mediana_val, 1), " meses"),
+  #         color = "red", hjust = 0) +
+  labs(x = NULL, y = "Tempo até reganho (meses)") +
+  theme_minimal(base_size = 12) +
+  theme(axis.text.x = element_blank())
+```
+
+O código seleciona apenas os pacientes que **atingiram perda ≥5%** e que, em algum momento, **apresentaram reganho** (definido como voltar a ter perda \<5% em relação ao basal). Em seguida, calcula a **mediana do tempo até o primeiro reganho** (em meses) entre esses pacientes (`mediana_val`) e constrói um gráfico **violino + boxplot** com pontos individuais para visualizar a **distribuição do tempo até o reganho**. A mediana é destacada por uma **linha tracejada vermelha** e anotada no gráfico.
+
+> Legenda:\
+> Distribuição do tempo até o primeiro reganho (\<5%) entre os pacientes que atingiram perda ≥5%. O violino representa a densidade da distribuição, o boxplot resume a mediana e o intervalo interquartil, e os pontos mostram observações individuais. A linha tracejada vermelha destaca a mediana do tempo até o reganho (≈ 9 meses).\
+
+> Resultados:\
+> Entre os pacientes que atingiram a meta de perda ≥5% e posteriormente apresentaram reganho (queda para \<5%), o tempo mediano até o evento foi de aproximadamente **9 meses**, com ampla variabilidade entre indivíduos. Esse resultado contrasta com a estimativa baseada na análise de sobrevivência de toda a coorte (incluindo censura), na qual a mediana do tempo até o reganho foi de **24,2 meses**. Em conjunto, os achados indicam que, embora uma parcela expressiva mantenha a perda clinicamente relevante por períodos prolongados, o reganho tende a ocorrer de forma relativamente precoce entre aqueles suscetíveis.
+
+> Discussão - comparação Kaplan-Meier vs. tempo mediano do evento naqueles em que o evento de reganho de peso foi observado\
+> Entre os pacientes que atingiram perda ≥5%, o tempo mediano até o reganho, considerando toda a coorte e incluindo a censura dos indivíduos que não apresentaram o evento, foi de 24,2 meses (estimado pelo modelo de Kaplan–Meier). Esse valor indica o ponto em que metade da amostra ainda mantinha a perda ≥5%, refletindo a trajetória global do grupo, inclusive daqueles que nunca perderam o benefício. Por outro lado, ao analisar apenas os pacientes que efetivamente apresentaram reganho, o tempo mediano até o evento foi bem menor, cerca de 9 meses (IIQ: 5–18). Essa segunda métrica revela em quanto tempo, em média, o reganho ocorre entre os suscetíveis. Em conjunto, os achados mostram que, embora uma parcela expressiva mantenha a perda clinicamente relevante por períodos prolongados, o reganho tende a se manifestar precocemente nos indivíduos vulneráveis.\
+
+```{r}
+#| label: dist-tempo-ate-reganho-hist
+#| fig.cap: "Tempo até reganho (<5%): histograma dos eventos e marcações dos censurados."
+#| fig.width: 6
+#| fig.height: 4
+#| message: false
+#| warning: false
+
+# separar tempos de evento e de censura
+df_plot <- reganho_primeiro %>%
+  mutate(
+    tempo_meses = time_to_event_months,
+    status = ifelse(event, "Evento (reganho)", "Censurado")
+  )
+
+# histograma para quem teve evento; risquinhos (rug) na base para censurados
+ggplot() +
+  geom_histogram(
+    data = df_plot %>% filter(event),
+    aes(x = tempo_meses),
+    bins = 18,  # ~classes de 3-4 meses, ajuste se desejar
+    alpha = 0.7
+  ) +
+  geom_rug(
+    data = df_plot %>% filter(!event),
+    aes(x = tempo_meses),
+    sides = "b",
+    alpha = 0.6
+  ) +
+  labs(
+    x = "Tempo desde a perda ≥5% (meses)",
+    y = "Nº de pacientes (com evento)",
+    subtitle = "Barras: eventos de reganho; Rug na base: observações censuradas"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+O histograma apresenta a distribuição do tempo até o reganho (\<5%) entre os pacientes que atingiram perda ≥5%. As barras representam o número de eventos observados em cada intervalo de tempo, enquanto os traços na base (rug) indicam os tempos de censura, ou seja, pacientes que não reganharam até a última consulta registrada.
+
+> Legenda:\
+> Distribuição do tempo até o reganho (\<5%) entre os pacientes que atingiram perda ≥5%. As barras indicam os eventos de reganho e os traços na base representam os tempos de censura (indivíduos que não reganharam até a última observação).
+
+> Resultados:\
+> O histograma dos tempos até o reganho (\<5%) mostra maior concentração de eventos nos primeiros 12 a 18 meses após atingir a meta, mas também ocorrência esporádica ao longo de períodos mais prolongados. Os traços na base indicam o seguimento dos pacientes que permaneceram censurados, evidenciando que parte deles manteve a perda ≥5% por até 5–6 anos sem apresentar reganho.
+
+## 3.3. No subgrupo com perda ≥5%, comparar o momento (≤6 meses, 6–12 meses, \>12 meses) em que a meta de perda de 5% foi alcançada.
+
+Objetivo: qual o tempo ideial de seguimento em que (dentre os que tiveram perda significativa) os indivíduos tem maior probabilidade de atingir a perda significativa.
+
+Racional: Otimizar o fluxo do ambulatório e definir um tempo ideal para darmos alta para o paciente, caso ele não atinja a perda de 5% do peso, para podermos atender outro caso novo no lugar, dando chance a outra pessoa de perder peso
+
+```{r}
+#| label: momento-atingiu-5-categorias
+#| message: false
+#| warning: false
+
+## 3.3. No subgrupo com perda ≥5%, comparar o momento (≤6m, 6–12m, 12–18m, 18–24m, 24–30m, 30–36m, >36m)
+## em que a meta foi alcançada
+
+library(dplyr)
+library(purrr)
+
+# Partimos de `momento_perda5` (uma linha por paciente que atingiu ≥5%)
+# Criar meses até a 1ª vez que atingiu ≥5% e classificar em 7 janelas
+atingiu_por_janela <- momento_perda5 %>%
+  mutate(
+    meses_ate_5 = week_consultation / 4.345,
+    janela = case_when(
+      meses_ate_5 <= 6                       ~ "≤6m",
+      meses_ate_5 > 6   & meses_ate_5 <= 12  ~ "6–12m",
+      meses_ate_5 > 12  & meses_ate_5 <= 18  ~ "12–18m",
+      meses_ate_5 > 18  & meses_ate_5 <= 24  ~ "18–24m",
+      meses_ate_5 > 24  & meses_ate_5 <= 30  ~ "24–30m",
+      meses_ate_5 > 30  & meses_ate_5 <= 36  ~ "30–36m",
+      meses_ate_5 > 36                       ~ ">36m",
+      TRUE ~ NA_character_
+    ),
+    janela = factor(janela,
+                    levels = c("≤6m","6–12m","12–18m",
+                               "18–24m","24–30m","30–36m",">36m"))
+  ) %>%
+  filter(!is.na(janela))
+
+# Resumo com IC95% binomial para a proporção em cada janela
+resumo_janelas <- atingiu_por_janela %>%
+  count(janela, name = "n") %>%
+  mutate(
+    N_total = sum(n),
+    prop    = n / N_total
+  ) %>%
+  rowwise() %>%
+  mutate(
+    ci_low  = binom.test(n, N_total)$conf.int[1],
+    ci_high = binom.test(n, N_total)$conf.int[2]
+  ) %>%
+  ungroup()
+
+knitr::kable(
+  resumo_janelas,
+  digits = 3,
+  col.names = c("Janela", "n", "N total", "Proporção", "IC95% inferior", "IC95% superior"),
+  caption = "Distribuição do primeiro alcance de perda ≥5% por janela de tempo entre os que atingiram a meta.",
+  align = c("l", "c", "c", "c", "c", "c")
+)
+```
+
+Esse código agora cria sete categorias de tempo (≤6m, 6–12m, 12–18m, 18–24m, 24–30m, 30–36m, \>36m) para identificar em qual janela os pacientes que atingiram ≥5% chegaram à meta. A tabela resumo_janelas mostra n, proporção e IC95% em cada faixa.
+
+> Interpretação:\
+> Entre os **221 pacientes que atingiram perda ≥5%**, a distribuição do **primeiro alcance** da meta ocorreu de forma heterogênea ao longo do seguimento:\
+> \
+> - **≤6 meses:** 30,3% (IC95%: 24,3–36,8)\
+> - **6–12 meses:** 28,5% (IC95%: 22,7–34,9)\
+> - **12–18 meses:** 13,1% (IC95%: 9,0–18,3)\
+> - **18–24 meses:** 7,2% (IC95%: 4,2–11,5)\
+> - **24–30 meses:** 4,5% (IC95%: 2,2–8,2)\
+> - **30–36 meses:** 3,6% (IC95%: 1,6–7,0)\
+> - **\>36 meses:** 12,7% (IC95%: 8,6–17,8)\
+
+> Resultados:\
+> Mais da metade dos pacientes respondeu em até **12 meses** (58,8%), com maior concentração nos primeiros 6 meses (30,3%). Entretanto, uma proporção não desprezível (≈41,2%) atingiu a meta após 12 meses, incluindo 12,7% somente após 36 meses de seguimento.\
+
+> Discussão:  Esses achados sugerem que, embora o período de **até 12 meses** seja o mais produtivo para identificar respondedores precoces, ainda há uma parcela significativa de **respondedores tardios** que podem se beneficiar de um seguimento prolongado. Do ponto de vista clínico e de gestão ambulatorial, isso sugere que uma **alta precoce baseada apenas na ausência de resposta em 12 meses** poderia descartar pacientes com chance real de atingir benefício clínico relevante em períodos posteriores.\
+
+```{r}
+#| label: grafico-atingiu-por-janela
+#| fig.cap: "Distribuição do primeiro alcance de perda ≥5% por janela de tempo entre os que atingiram a meta (proporção e IC95%)."
+#| fig.width: 6
+#| fig.height: 4
+#| message: false
+#| warning: false
+
+library(ggplot2)
+library(scales)
+library(dplyr)
+
+# garantir ordem e colunas auxiliares para rótulos (% e n)
+plot_janelas <- resumo_janelas %>%
+  mutate(
+    janela = factor(janela,
+      levels = c("≤6m","6–12m","12–18m","18–24m","24–30m","30–36m",">36m")
+    ),
+    prop_lab = percent(prop, accuracy = 0.1),
+    n_lab = paste0("n=", n)
+  )
+
+ggplot(plot_janelas, aes(x = janela, y = prop)) +
+  geom_col(width = 0.7) +
+  geom_errorbar(aes(ymin = ci_low, ymax = ci_high), width = 0.12, linewidth = 0.7) +
+  geom_text(aes(label = prop_lab), vjust = -0.4, size = 3.3) +
+  geom_text(aes(label = n_lab, y = pmax(prop - 0.04, 0.01)), # rótulo de n dentro da barra
+            color = "white", fontface = "bold", size = 3) +
+  scale_y_continuous(labels = percent_format(accuracy = 1), limits = c(0, 0.4)) +
+  labs(x = "Janela da 1ª vez que atingiu ≥5%", y = "Proporção dos respondedores (%)") +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    axis.title.x = element_text(margin = margin(t = 8)),
+    axis.title.y = element_text(margin = margin(r = 8))
+  )
+```
+
+> Legenda:\
+> Distribuição do primeiro alcance de perda ≥5% por janelas de tempo entre os pacientes que atingiram a meta. As barras representam a proporção (%) de respondedores em cada intervalo, com intervalos de confiança de 95%. Os valores sobre as colunas indicam a proporção e o número absoluto de pacientes (n) em cada grupo.
+
+## Probabilidade cumulativa de atingir ≥5%
+
+```{r}
+#| label: cuminc-atingir-5-varias-janelas
+#| message: false
+#| warning: false
+
+# Probabilidade cumulativa de atingir ≥5% em múltiplos tempos (≤6m, 6–12m, 12–18m, 18–24m, 24–30m, 30–36m)
+# Evento = "atingir ≥5%"; censura = não atingiu até a última consulta
+
+library(dplyr)
+library(survival)
+library(tibble)
+
+# 1) Construir objeto de tempo para TODA a coorte (inclui quem nunca atingiu)
+tempo_evento <- momento_perda5 %>%
+  transmute(record_id, t_event_meses = week_consultation / 4.345, status = 1)
+
+tempo_cens <- obese %>%
+  group_by(record_id) %>%
+  summarize(t_last_meses = max(week_consultation, na.rm = TRUE) / 4.345, .groups = "drop")
+
+coorte_tempo <- tempo_cens %>%
+  left_join(tempo_evento, by = "record_id") %>%
+  mutate(
+    time   = ifelse(!is.na(t_event_meses), t_event_meses, t_last_meses),
+    status = ifelse(!is.na(t_event_meses), 1, 0)  # 1 = atingiu; 0 = censurado
+  )
+
+# 2) Ajustar KM (sobrevida = ainda NÃO atingiu). Cumulativa = 1 - S(t)
+fit_atingir <- survfit(Surv(time, status) ~ 1, data = coorte_tempo, conf.type = "log")
+
+# 3) Tempos-alvo (em meses)
+tempos_alvo <- c(6, 12, 18, 24, 30, 36)
+
+# 4) Extrair S(t) e IC95% e converter para probabilidade cumulativa 1 - S(t)
+sum_atingir <- summary(fit_atingir, times = tempos_alvo, extend = TRUE)
+
+tabela_cuminc <- tibble(
+  tempo_meses = sum_atingir$time,
+  prob_atingir = 1 - sum_atingir$surv,         # cumulativa
+  ic_low       = 1 - sum_atingir$upper,        # inverter limites de S(t)
+  ic_high      = 1 - sum_atingir$lower
+)
+
+# Tabela formatada (percentuais) para o artigo
+tabela_cuminc_fmt <- tabela_cuminc %>%
+  mutate(
+    `Prob (%)` = prob_atingir * 100,
+    `IC95% inferior` = ic_low * 100,
+    `IC95% superior` = ic_high * 100
+  ) %>%
+  select(`Tempo (meses)` = tempo_meses, `Prob (%)`, `IC95% inferior`, `IC95% superior`)
+
+knitr::kable(
+  tabela_cuminc_fmt,
+  digits = 3,
+  caption = "Probabilidade cumulativa de atingir perda ≥5% em múltiplos tempos após o início do acompanhamento.",
+  align = c("c", "c", "c", "c")
+)
+```
+
+Esse chunk calcula, para toda a coorte com censura, a probabilidade cumulativa de atingir ≥5% em 6, 12, 18, 24, 30 e 36 meses, com IC95% (Greenwood via survfit). O argumento extend = TRUE mantém o último valor de S(t) caso o tempo solicitado ultrapasse o último tempo observado.
+
+> Resultados:\
+> Na análise de tempo até evento com censura (Kaplan–Meier), a probabilidade cumulativa de atingir perda ≥5% aumentou progressivamente ao longo do seguimento. Aos 6 meses, cerca de 12,8% (IC95%: 9,8–15,6) dos pacientes já haviam alcançado a meta. Esse percentual subiu para 27,6% (IC95%: 23,4–31,6) aos 12 meses, 36,0% (IC95%: 31,2–40,5) aos 18 meses, e 41,5% (IC95%: 36,3–46,2) aos 24 meses.\
+> No seguimento mais prolongado, as chances continuaram a crescer, atingindo 45,6% (IC95%: 40,1–50,6) aos 30 meses\
+> e 49,8% (IC95%: 43,9–55,0) aos 36 meses de acompanhamento.\
+> Interpretação: aproximadamente metade da coorte atingiu perda ≥5% até três anos de seguimento. O maior ganho em probabilidade ocorreu nos primeiros 12 meses, mas uma fração importante de pacientes ainda atingiu a meta após esse período, reforçando a relevância do acompanhamento prolongado.\
+
+```{r}
+#| label: plot-cuminc-atingir-5-varias-janelas
+#| fig.cap: "Probabilidade cumulativa de atingir perda ≥5% (evento) ao longo do tempo, com IC95% nos marcos de 6, 12, 18, 24, 30 e 36 meses."
+#| fig.width: 7
+#| fig.height: 4.5
+#| message: false
+#| warning: false
+
+library(ggplot2)
+library(scales)
+
+# Curva KM como 1 - S(t) (suavizado em degraus) + pontos com IC95% nos marcos
+# Construir data.frame da curva cumulativa completa
+km_step <- data.frame(
+  time = fit_atingir$time,
+  cuminc = 1 - fit_atingir$surv
+)
+
+ggplot(km_step, aes(x = time, y = cuminc)) +
+  geom_step(linewidth = 0.9) +
+  geom_point(data = tabela_cuminc,
+             aes(x = tempo_meses, y = prob_atingir)) +
+  geom_errorbar(data = tabela_cuminc,
+                aes(x = tempo_meses, ymin = ic_low, ymax = ic_high),
+                width = 0.6, linewidth = 0.6, inherit.aes = FALSE) +
+  scale_y_continuous(labels = percent_format(accuracy = 1), limits = c(0, 1)) +
+  scale_x_continuous(breaks = tempos_alvo) +
+  labs(x = "Tempo (meses)", y = "Probabilidade cumulativa (atingir ≥5%)") +
+  theme_minimal(base_size = 12)
+```
+
+O gráfico mostra a curva cumulativa (1 − S(t)) e destaca, com pontos e IC95%, os marcos de 6, 12, 18, 24, 30 e 36 meses. Assim, você visualiza tanto a evolução contínua quanto os pontos de decisão úteis para o fluxo ambulatorial.
+
+> Legenda:\
+> Curva de Kaplan–Meier mostrando a probabilidade cumulativa de atingir perda ≥5% ao longo do tempo, considerando a censura dos pacientes que não alcançaram o evento. Os pontos pretos na curva indicam os marcos de 6, 12, 18, 24, 30 e 36 meses, com seus respectivos intervalos de confiança de 95%, evidenciando a progressão contínua da proporção de pacientes que atingiram a meta durante o seguimento.
+
+## Probabilidade condicional de atingir ≥5% em janelas sucessivas, dado que ainda não atingiu no início da janela
+
+```{r}
+#| label: prob-cond-intervalos
+
+# Objetivo: estimar probabilidades CONDICIONAIS por janelas sucessivas:
+# P(atingir ≥5% em (a,b] | ainda não atingiu até a)
+# a partir da curva de sobrevivência (KM) para "tempo até atingir ≥5%".
+
+library(dplyr)
+library(survival)
+library(tibble)
+library(ggplot2)
+library(scales)
+
+# --- (re)construir objeto de tempo da coorte inteira (evento = atingir ≥5%) ---
+tempo_evento <- momento_perda5 %>%
+  transmute(record_id, t_event_meses = week_consultation / 4.345, status = 1)
+
+tempo_cens <- obese %>%
+  group_by(record_id) %>%
+  summarize(t_last_meses = max(week_consultation, na.rm = TRUE) / 4.345, .groups = "drop")
+
+coorte_tempo <- tempo_cens %>%
+  left_join(tempo_evento, by = "record_id") %>%
+  mutate(
+    time   = ifelse(!is.na(t_event_meses), t_event_meses, t_last_meses),
+    status = ifelse(!is.na(t_event_meses), 1, 0)  # 1 = atingiu; 0 = censurado
+  )
+
+fit_atingir <- survfit(Surv(time, status) ~ 1, data = coorte_tempo, conf.type = "log")
+
+# --- Janelas desejadas (em meses) ---
+# vamos calcular P((0,6] | T>0), P((6,12] | T>6), ..., P((30,36] | T>30) e P((36, fim] | T>36)
+cutpoints <- c(0, 6, 12, 18, 24, 30, 36)
+t_end <- max(coorte_tempo$time, na.rm = TRUE)
+
+# Sobrevivência (S) nos pontos de corte e no fim do seguimento
+S_pts <- summary(fit_atingir, times = c(cutpoints, t_end), extend = TRUE)$surv
+# separar: S nos cortes e S no fim
+S_cuts <- S_pts[seq_len(length(cutpoints))]
+S_end  <- S_pts[length(S_pts)]
+
+# Probabilidade condicional por intervalo (a,b]: (S(a) - S(b)) / S(a)
+# Para o último ">36m": (S(36) - S(end)) / S(36)
+p_cond <- (S_cuts[-length(S_cuts)] - S_cuts[-1]) / S_cuts[-length(S_cuts)]
+p_last <- (S_cuts[length(S_cuts)] - S_end) / S_cuts[length(S_cuts)]
+p_all  <- c(p_cond, p_last)
+
+# Rótulos das janelas
+labels <- c("≤6m","6–12m","12–18m","18–24m","24–30m","30–36m",">36m")
+
+# Número em risco no início de cada janela (útil para contexto)
+sum_risk <- summary(fit_atingir, times = cutpoints, extend = TRUE)
+n_risk   <- sum_risk$n.risk
+
+# Tabela final
+tabela_prob_cond <- tibble(
+  `Janela` = labels,
+  `Em risco no início (n)` = n_risk,
+  `Prob. condicional` = p_all,
+  `Prob. condicional (%)` = 100 * p_all
+)
+
+# Tabela formatada
+tabela_prob_cond_fmt <- tabela_prob_cond %>%
+  mutate(
+    `Prob. condicional (%)` = sprintf("%.1f", `Prob. condicional (%)`)
+  ) %>%
+  select(Janela, `Em risco no início (n)`, `Prob. condicional (%)`)
+
+knitr::kable(
+  tabela_prob_cond_fmt,
+  caption = "Probabilidade condicional de atingir perda ≥5% em janelas sucessivas, entre os que ainda não atingiram até o início da janela.",
+  col.names = c("Janela", "Em risco no início (n)", "Prob. condicional (%)"),
+  align = c("l", "c", "c")
+)
+```
+
+O código acima calcula, a partir da curva de Kaplan–Meier, a probabilidade condicional de atingir a meta em cada intervalo dado que ainda não havia atingido no início do intervalo.
+
+> **Resultados:**\
+> A análise de probabilidades condicionais mostrou que **12,8%** dos pacientes atingiram perda ≥5% nos **primeiros 6 meses** de seguimento. Entre aqueles que não haviam alcançado a meta até esse ponto, a probabilidade de atingi-la no intervalo **6–12 meses** foi de **17,0%**. Já entre 12–18 meses, a chance condicional foi de **11,6%**, caindo para **8,6%** entre **18–24 meses**, **7,1%** entre **24–30 meses** e **7,6%** entre **30–36 meses**.\
+> A partir de 36 meses, a probabilidade condicional foi de **45,8%** entre os pacientes que permaneciam sem resposta até então.\
+
+## IC95% por bootstrap de pacientes
+
+```{r}
+#| label: prob-cond-intervalos-bootstrap
+#| message: false
+#| warning: false
+
+# Probabilidades CONDICIONAIS por janelas sucessivas:
+# P(atingir ≥5% em (a,b] | ainda não atingiu até a), com IC95% via bootstrap por paciente.
+
+library(dplyr)
+library(survival)
+library(tibble)
+library(purrr)
+
+# --- 1) Reconstruir coorte em formato "tempo até evento" (uma linha por paciente) ---
+tempo_evento <- momento_perda5 %>%
+  transmute(record_id, t_event_meses = week_consultation / 4.345, status = 1)
+
+tempo_cens <- obese %>%
+  group_by(record_id) %>%
+  summarize(t_last_meses = max(week_consultation, na.rm = TRUE) / 4.345, .groups = "drop")
+
+coorte_tempo <- tempo_cens %>%
+  left_join(tempo_evento, by = "record_id") %>%
+  mutate(
+    time   = ifelse(!is.na(t_event_meses), t_event_meses, t_last_meses),
+    status = ifelse(!is.na(t_event_meses), 1, 0)  # 1 = atingiu; 0 = censurado
+  )
+
+# --- 2) Função para extrair probabilidades condicionais por intervalo a partir de um objeto survfit ---
+# P((a,b] | T>a) = [S(a) - S(b)] / S(a), onde S(t) = Prob(T > t)
+prob_condicionais <- function(coorte_df, cutpoints) {
+  fit <- survfit(Surv(time, status) ~ 1, data = coorte_df, conf.type = "log")
+  t_end <- max(coorte_df$time, na.rm = TRUE)
+  S_vec <- summary(fit, times = c(cutpoints, t_end), extend = TRUE)$surv
+  S_cuts <- S_vec[seq_len(length(cutpoints))]   # S nos pontos de corte
+  S_end  <- S_vec[length(S_vec)]               # S no fim do seguimento
+  
+  # Evitar divisão por zero quando S(a) ~ 0
+  safe_div <- function(num, den) ifelse(den > 0, num / den, NA_real_)
+  
+  p_cond <- safe_div(S_cuts[-length(S_cuts)] - S_cuts[-1], S_cuts[-length(S_cuts)])  # (0-6], (6-12], ...
+  p_last <- safe_div(S_cuts[length(S_cuts)] - S_end,       S_cuts[length(S_cuts)])   # (>36m até fim)
+  c(p_cond, p_last)
+}
+
+# --- 3) Prob. condicionais no conjunto original ---
+cutpoints <- c(0, 6, 12, 18, 24, 30, 36)
+labels <- c("≤6m","6–12m","12–18m","18–24m","24–30m","30–36m",">36m")
+
+fit_full <- survfit(Surv(time, status) ~ 1, data = coorte_tempo, conf.type = "log")
+n_risk   <- summary(fit_full, times = cutpoints, extend = TRUE)$n.risk
+
+p_orig <- prob_condicionais(coorte_tempo, cutpoints)
+
+tabela_prob_cond <- tibble(
+  Janela = labels,
+  `Em risco no início (n)` = n_risk,
+  `Prob. condicional` = p_orig
+)
+
+# --- 4) IC95% por bootstrap de pacientes (re-amostra record_id com reposição) ---
+set.seed(1234)
+B <- 2000
+
+# índices para bootstrap (amostragem por linha/paciente)
+idx_list <- replicate(B, sample.int(nrow(coorte_tempo), replace = TRUE), simplify = FALSE)
+
+boot_mat <- map_dbl(seq_len(B * length(labels)), function(i) NA_real_) # pré-aloca
+boot_mat <- matrix(NA_real_, nrow = B, ncol = length(labels))
+
+for (b in seq_len(B)) {
+  coorte_boot <- coorte_tempo[idx_list[[b]], , drop = FALSE]
+  boot_mat[b, ] <- prob_condicionais(coorte_boot, cutpoints)
+}
+
+# Intervalos percentis 2.5% e 97.5%
+ci_low  <- apply(boot_mat, 2, quantile, probs = 0.025, na.rm = TRUE)
+ci_high <- apply(boot_mat, 2, quantile, probs = 0.975, na.rm = TRUE)
+
+tabela_prob_cond_ci <- tabela_prob_cond %>%
+  mutate(
+    `IC95% inferior` = ci_low,
+    `IC95% superior` = ci_high,
+    `Prob. condicional (%)` = 100 * `Prob. condicional`,
+    `IC95% inferior (%)` = 100 * `IC95% inferior`,
+    `IC95% superior (%)` = 100 * `IC95% superior`
+  )
+
+tabela_prob_cond_ci
+
+knitr::kable(
+  tabela_prob_cond_ci %>%
+    select(Janela, `Em risco no início (n)`, `Prob. condicional (%)`,
+           `IC95% inferior (%)`, `IC95% superior (%)`),
+  digits = 3,
+  col.names = c("Janela", "Em risco no início (n)", "Prob. condicional (%)",
+                "IC95% inferior (%)", "IC95% superior (%)"),
+  caption = "Probabilidade condicional de atingir perda ≥5% em janelas sucessivas, entre os que ainda não atingiram até o início da janela, com IC95% via bootstrap (B=2000).",
+  align = c("l", "c", "c", "c", "c")
+)
+
+
+```
+
+O gráfico mostra eventos isolados por janela, condicionados à não resposta até o início de cada intervalo — exatamente a pergunta clínica:
+
+-   “Qual a chance de atingir ≥5% até 6 meses?” → ≤6m.
+-   “Se não atingiu até 6 meses, qual a chance entre 6–12m?” → barra 6–12m.
+-   … e assim por diante, inclusive \>36m (do mês 36 até o final do seguimento observado).
+
+O chunk calcula as probabilidades condicionais por janela (ex.: qual a chance de atingir entre 6–12 meses dado que não atingiu até 6 meses) e estima IC95% via bootstrap por paciente (B=2000). A tabela final tabela_prob_cond_ci inclui número em risco no início de cada janela, probabilidade condicional e IC95%.
+
+> **Resultados:**\
+> A probabilidade condicional de atingir perda ≥5% variou ao longo das janelas de seguimento.\
+> Nos **primeiros 6 meses**, **12,8%** dos pacientes alcançaram a meta (IC95%: 10,1–15,5).\
+> Entre aqueles que não haviam atingido até então, a chance de alcançá-la entre **6–12 meses** foi de **17,0%** (IC95%: 13,3–20,9).\
+> Já nos intervalos subsequentes, as probabilidades condicionais foram menores: **11,6%** (IC95%: 7,7–15,8) entre **12–18 meses**, **8,6%** (IC95%: 4,7–12,7) entre **18–24 meses**, **7,1%** (IC95%: 3,0–11,4) entre **24–30 meses** e **7,6%** (IC95%: 3,1–13,1) entre **30–36 meses**.\
+> No grupo que permaneceu sem resposta até os **\>36 meses**, a probabilidade de atingir a perda mínima clínica foi de **45,8%** (IC95%: 31,1–61,5).\
+> Esses resultados indicam que a maior parte dos respondedores é identificada até os 12 meses, mas há também um subgrupo menor de respondedores tardios, inclusive após longos períodos de acompanhamento.
+
+```{r}
+#| label: plot-prob-cond-intervalos-ci
+#| fig.cap: "Probabilidade condicional de atingir ≥5% por janelas sucessivas, com IC95% bootstrap (B=2000), condicionada a não ter atingido no início de cada janela."
+#| fig.width: 7.5
+#| fig.height: 4.6
+#| message: false
+#| warning: false
+
+library(ggplot2)
+library(scales)
+
+# 1) Prepara a ordem das janelas  
+#    Converte `Janela` em *factor* com níveis definidos
+#    Garante que o gráfico apareça em ordem cronológica no eixo X.
+tabela_prob_cond_ci <- tabela_prob_cond_ci %>%
+  mutate(
+    Janela = factor(
+      Janela,
+      levels = c("≤6m","6–12m","12–18m","18–24m","24–30m","30–36m",">36m")
+    )
+  )
+
+# 2) Ajusta o limite superior do eixo Y  
+#    Define `ylim_top` como o maior valor entre 0,5 (50%) e IC95% superior + 0,05, 
+#    evitando que as barras/erros fiquem cortados e mantendo boa leitura P baixas.
+ylim_top <- max(0.5, max(tabela_prob_cond_ci$`IC95% superior`, na.rm = TRUE) + 0.05)
+
+# 3) Constrói o gráfico de barras com IC95%  
+# - `geom_col()` plota a probabilidade condicional de atingir ≥5% em cada janela, 
+#    condicionada a não ter atingido antes do início da # janela.  
+# - `geom_errorbar()` adiciona as barras de erro com os IC95% bootstrap (B=2000)  
+# - `geom_text()` escreve o rótulo em % sobre cada barra.
+ggplot(tabela_prob_cond_ci, aes(x = Janela, y = `Prob. condicional`)) +
+  geom_col(width = 0.7) +
+  geom_errorbar(
+    aes(ymin = `IC95% inferior`, ymax = `IC95% superior`),
+    width = 0.12, linewidth = 0.7
+  ) +
+  geom_text(
+    aes(label = percent(`Prob. condicional`, accuracy = 0.1)),
+    vjust = -0.4, size = 3.2
+  ) +
+# 4) Formata eixos e tema  
+# - `scale_y_continuous()` mostra o eixo Y em percentuais e aplica os limites calculados.  
+# - `labs()` rotula os eixos deixando claro que o evento é “atingir ≥5%”.  
+# - `theme_minimal()` e a remoção da grade menor deixam o gráfico limpo para publicação.
+  scale_y_continuous(labels = percent_format(accuracy = 1), limits = c(0, ylim_top)) +
+  labs(x = "Janela de tempo", y = "Probabilidade condicional (evento = atingir ≥5%)") +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.minor = element_blank())
+
+```
+
+O código plota, em ordem cronológica, as probabilidades condicionais por intervalos sucessivos (≤6m, 6–12m, …, \>36m) de atingir perda ≥5%, dado que o paciente ainda não havia atingido antes do início de cada janela. Cada barra traz seu IC95% (bootstrap) e o rótulo percentual, permitindo leitura direta e comparável entre janelas.
+
+> Legenda:\
+> Probabilidade **condicional** de atingir perda ≥5% em janelas sucessivas de tempo, **condicionada a não ter atingido a meta no início da janela**. As barras representam as estimativas pontuais e as linhas verticais os **intervalos de confiança de 95% (bootstrap, B=2000)**. Observa-se maior probabilidade nos primeiros 12 meses e novamente após os 36 meses de acompanhamento.
+
+## 3.4. Comparar a PERDA MÁXIMA (%) entre as 7 janelas do 1º alcance (≤6m, 6–12m, 12–18m, 18–24m, 24–30m, 30–36m, \>36m)
+
+```{r}
+#| label: perda-maxima-por-janela-7
+
+# c) Comparar a PERDA MÁXIMA (%) entre as 7 janelas do 1º alcance (≤6m, 6–12m, 12–18m, 18–24m, 24–30m, 30–36m, >36m)
+
+library(dplyr)
+
+# 1) Nadir (maior perda percentual) por paciente ao longo de TODO o seguimento
+nadir_por_paciente <- obese %>%
+  filter(!is.na(percent_weight_loss)) %>%
+  group_by(record_id) %>%
+  slice_max(percent_weight_loss, with_ties = FALSE) %>%
+  ungroup() %>%
+  select(record_id, perda_maxima = percent_weight_loss)
+
+# 2) Garantir que `atingiu_por_janela` tem as 7 janelas (caso tenha sido criado antes)
+atingiu_por_janela <- momento_perda5 %>%
+  mutate(
+    meses_ate_5 = week_consultation / 4.345,
+    janela = dplyr::case_when(
+      meses_ate_5 <= 6                       ~ "≤6m",
+      meses_ate_5 > 6  & meses_ate_5 <= 12   ~ "6–12m",
+      meses_ate_5 > 12 & meses_ate_5 <= 18   ~ "12–18m",
+      meses_ate_5 > 18 & meses_ate_5 <= 24   ~ "18–24m",
+      meses_ate_5 > 24 & meses_ate_5 <= 30   ~ "24–30m",
+      meses_ate_5 > 30 & meses_ate_5 <= 36   ~ "30–36m",
+      meses_ate_5 > 36                       ~ ">36m",
+      TRUE ~ NA_character_
+    ),
+    janela = factor(janela, levels = c("≤6m","6–12m","12–18m","18–24m","24–30m","30–36m",">36m"))
+  ) %>%
+  filter(!is.na(janela))
+
+# 3) Juntar perda máxima ao grupo de janelas
+comparacao_perda_max <- atingiu_por_janela %>%
+  left_join(nadir_por_paciente, by = "record_id")
+
+# 4) Teste global não-paramétrico (Kruskal–Wallis)
+kw_test <- kruskal.test(perda_maxima ~ janela, data = comparacao_perda_max)
+
+# 5) Sumário por janela (mediana + IC95% via bootstrap da mediana)
+set.seed(123)
+boot_ci <- function(x, B = 2000) {
+  if (all(is.na(x))) return(c(NA_real_, NA_real_))
+  boots <- replicate(B, median(sample(x[!is.na(x)], replace = TRUE)))
+  stats::quantile(boots, c(0.025, 0.975), na.rm = TRUE)
+}
+
+resumo_perda_max <- comparacao_perda_max %>%
+  group_by(janela) %>%
+  summarize(
+    n = n(),
+    mediana = median(perda_maxima, na.rm = TRUE),
+    ic_low  = boot_ci(perda_maxima)[1],
+    ic_high = boot_ci(perda_maxima)[2],
+    .groups = "drop"
+  )
+
+list(resumo_perda_max = resumo_perda_max, kruskal_wallis = kw_test)
+```
+
+O código acima estende a comparação da perda máxima (%) para as 7 janelas definidas, calcula o teste de Kruskal–Wallis e produz uma tabela com n, mediana e IC95% (bootstrap) por janela.
+
+A análise da **perda máxima de peso (%)** ao longo do seguimento, estratificada pela **janela em que o paciente atingiu pela primeira vez ≥5%**, mostrou que as **medianas foram semelhantes** entre os grupos:\
+- **≤6m:** 9,9% (IC95%: 8,0–11,3)\
+- **6–12m:** 10,0% (IC95%: 8,1–12,1)\
+- **12–18m:** 10,1% (IC95%: 7,4–12,7)\
+- **18–24m:** 7,6% (IC95%: 5,6–12,0)\
+- **24–30m:** 8,7% (IC95%: 5,8–13,9)\
+- **30–36m:** 9,4% (IC95%: 6,9–12,4)\
+- **\>36m:** 9,8% (IC95%: 7,8–13,3)
+
+O **teste de Kruskal–Wallis** não identificou diferenças estatisticamente significativas entre as janelas (χ²=2,32; gl=6; p=0,888).
+
+**Interpretação:** independentemente do momento em que os pacientes alcançaram a perda inicial de ≥5%, a **perda máxima subsequente foi semelhante** entre os grupos, sugerindo que o padrão de resposta em termos de perda máxima é relativamente constante, seja para respondedores precoces ou tardios.
+
+```{r}
+#| label: grafico-perda-maxima-por-janela-7
+#| fig.cap: "Perda máxima (%) ao longo do seguimento, estratificada pela janela do primeiro alcance de ≥5% (mediana e IC95% bootstrap)."
+#| fig.width: 7
+#| fig.height: 4.5
+#| message: false
+#| warning: false
+
+library(ggplot2)
+library(scales)
+
+ggplot(resumo_perda_max, aes(x = janela, y = mediana)) +
+  geom_col(width = 0.7) +
+  geom_errorbar(aes(ymin = ic_low, ymax = ic_high), width = 0.12, linewidth = 0.7) +
+  scale_y_continuous(labels = label_number(accuracy = 0.1)) +
+  labs(x = "Janela do 1º alcance de ≥5%", y = "Perda máxima (%)") +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.minor = element_blank())
+```
+
+O gráfico resume a perda máxima por janela do primeiro alcance de ≥5%, mostrando medianas e IC95% por bootstrap.
+
+> Legenda:\
+> Perda máxima de peso (%) ao longo do seguimento, estratificada pela **janela em que ocorreu o primeiro alcance de perda ≥5%**.\
+> As barras representam as **medianas** e as linhas verticais os **intervalos de confiança de 95% (IC95%) obtidos por bootstrap**.\
+> Observa-se que a perda máxima foi semelhante entre as diferentes janelas de tempo, sem diferenças estatisticamente significativas.\
+
+# 4. Grupo sem perda ≥5%
+
+## 4.1. Identificar estimativas associadas a maior perda de peso observada: percentual de perda máxima, tempo desde o seguimento e consulta em que atingiu perda máxima
+
+## 4.2. Descrever o ganho de peso após esse momento.

@@ -11,6 +11,8 @@ format:
       collapsed: false
       smooth-scroll: true
     number-sections: false
+    code-fold: true
+    self-contained: true
   pdf:
     toc: true
     toc-depth: 5
@@ -19,7 +21,8 @@ format:
 
 ```{r}
 #| label: setup
-#| echo: false
+#| message: false
+#| warning: false
 
 rm(list = ls())
 graphics.off()
@@ -41,7 +44,8 @@ source("helper_functions.R")
 
 ```{r}
 #| label: load-packages
-#| echo: false
+#| message: false
+#| warning: false
 
 library(tidyverse)
 library(readxl)
@@ -59,7 +63,8 @@ library(purrr)
 
 ```{r}
 #| label: load-files
-#| echo: false
+#| message: false
+#| warning: false
 
 consultas <- read_rds(file = here("data_output", "consultas_nearest.rds"))
 codebook_consultas <- read_csv(here("data", "codebook_consultas.csv"))
@@ -77,7 +82,6 @@ Em síntese, consultas constitui uma base de dados longitudinal, estruturada de 
 
 ```{r}
 #| label: filtering bmi
-#| echo: false
 
 consultas_bmi <- consultas %>%
   group_by(record_id) %>%
@@ -702,7 +706,8 @@ ggplot(indicadores_atendimento, aes(x = n_consultas)) +
   )
 ```
 
-> Legenda O gráfico ECDF mostra no eixo X o número de consultas por paciente e no eixo Y a proporção acumulada de pacientes que atingiram até aquele valor. Observa-se que cerca de **30% dos pacientes tiveram até 3 consultas**, aproximadamente **50% até 5 consultas (mediana)**, e **75% até 9 consultas (percentil 75)**. A curva se aproxima de 100% em torno de 26 consultas, que é o valor máximo observado. Esse tipo de gráfico facilita a visualização dos **percentis**: basta projetar horizontalmente a linha desejada (25%, 50%, 75%, etc.) até interceptar a curva e ler no eixo X o valor correspondente de consultas.
+> Legenda:\
+> O gráfico ECDF mostra no eixo X o número de consultas por paciente e no eixo Y a proporção acumulada de pacientes que atingiram até aquele valor. Observa-se que cerca de **30% dos pacientes tiveram até 3 consultas**, aproximadamente **50% até 5 consultas (mediana)**, e **75% até 9 consultas (percentil 75)**. A curva se aproxima de 100% em torno de 26 consultas, que é o valor máximo observado. Esse tipo de gráfico facilita a visualização dos **percentis**: basta projetar horizontalmente a linha desejada (25%, 50%, 75%, etc.) até interceptar a curva e ler no eixo X o valor correspondente de consultas.
 
 ```{r}
 #| label: resumo-tempo-seguimento
@@ -880,9 +885,11 @@ resultado_peso_final
 
 Esse código seleciona o primeiro e o último peso de cada paciente, compara-os e gera uma variável booleana (ganhou_peso), que assume valor 1 (TRUE) quando o peso da última consulta foi maior que o peso da primeira consulta. Em seguida, calcula-se a proporção de indivíduos cujo peso final foi maior que o inicial, incluindo o intervalo de confiança de 95% (IC95%) pelo teste binomial exato. O resultado mostra o número total de pacientes avaliados, quantos ganharam peso no período e a proporção correspondente, acompanhada do IC95%.
 
-> Resultado Entre os *574* indivíduos acompanhados, **153 (26,7%; IC95%: 23,1–30,5%) apresentaram peso final maior do que o peso inicial**. Isso indica que aproximadamente um quarto dos pacientes teve ganho ponderal ao longo do período de seguimento, enquanto a maioria (73.3%) apresentou peso final igual ou inferior ao inicial.
+> Resultado:\
+> Entre os *574* indivíduos acompanhados, **153 (26,7%; IC95%: 23,1–30,5%) apresentaram peso final maior do que o peso inicial**. Isso indica que aproximadamente um quarto dos pacientes teve ganho ponderal ao longo do período de seguimento, enquanto a maioria (73.3%) apresentou peso final igual ou inferior ao inicial.\
 
-> Discussão Do ponto de vista clínico, esse achado sugere que, embora a maior parte dos pacientes tenha conseguido manter ou reduzir o peso em relação ao início do acompanhamento, ainda existe uma proporção considerável que apresentou reganho ponderal. Esse fenômeno é consistente com a literatura, que aponta a dificuldade de manutenção da perda de peso em longo prazo, especialmente em contextos de obesidade, e reforça a importância de estratégias de acompanhamento contínuo e intervenções sustentadas para prevenção do reganho.
+> Discussão:\
+> Do ponto de vista clínico, esse achado sugere que, embora a maior parte dos pacientes tenha conseguido manter ou reduzir o peso em relação ao início do acompanhamento, ainda existe uma proporção considerável que apresentou reganho ponderal. Esse fenômeno é consistente com a literatura, que aponta a dificuldade de manutenção da perda de peso em longo prazo, especialmente em contextos de obesidade, e reforça a importância de estratégias de acompanhamento contínuo e intervenções sustentadas para prevenção do reganho.
 
 ### 1.7. Proporção de consultas (a partir da segunda) com ganho ou perda de peso em relação à anterior/baseline.
 
@@ -1061,11 +1068,13 @@ knitr::kable(
 
 Aqui formatamos duas tabelas finais, prontas para inserir no relatório/artigo: uma em relação à consulta anterior e outra em relação à baseline. Cada linha traz o total de consultas analisadas, a contagem e a proporção (%) com IC95% para “ganho”, “perda” e “estável”.
 
-> Resultados Entre as consultas analisadas a partir da segunda visita, observou-se que **44,1% (IC95% 42,1–46,1)** apresentaram ganho de peso em relação à consulta imediatamente anterior, enquanto **53,4% (IC95% 51,4–55,4)** mostraram perda de peso e **2,5% (IC95% 2,0–3,3)** permaneceram estáveis.\
+> Resultados:\
+> Entre as consultas analisadas a partir da segunda visita, observou-se que **44,1% (IC95% 42,1–46,1)** apresentaram ganho de peso em relação à consulta imediatamente anterior, enquanto **53,4% (IC95% 51,4–55,4)** mostraram perda de peso e **2,5% (IC95% 2,0–3,3)** permaneceram estáveis.\
 > Quando a referência foi a primeira consulta (baseline), os resultados evidenciaram uma tendência acumulada diferente: **35,7% (IC95% 33,9–37,6)** das consultas estavam associadas a ganho de peso em relação ao basal, **59,7% (IC95% 57,8–61,5)** a perda de peso, e **4,6% (IC95% 3,8–5,4)** mantiveram peso estável.\
-> Portanto, embora a análise **visita a visita** revele flutuações mais frequentes de ganho e perda, a comparação **com o peso inicial** sugere que, no seguimento acumulado, predominou a perda de peso.
+> Portanto, embora a análise **visita a visita** revele flutuações mais frequentes de ganho e perda, a comparação **com o peso inicial** sugere que, no seguimento acumulado, predominou a perda de peso.\
 
-> Discussão A análise longitudinal de perda de peso mostrou padrões distintos conforme o critério de referência utilizado. Considerando-se a consulta imediatamente anterior, a evolução do peso revelou **alta variabilidade**, com proporções semelhantes de consultas com ganho e perda, refletindo as oscilações individuais e possivelmente influências transitórias de fatores comportamentais, clínicos ou mesmo variações técnicas de medida.\
+> Discussão:\
+> A análise longitudinal de perda de peso mostrou padrões distintos conforme o critério de referência utilizado. Considerando-se a consulta imediatamente anterior, a evolução do peso revelou **alta variabilidade**, com proporções semelhantes de consultas com ganho e perda, refletindo as oscilações individuais e possivelmente influências transitórias de fatores comportamentais, clínicos ou mesmo variações técnicas de medida.\
 > Por outro lado, quando o peso inicial foi adotado como referência, observou-se uma **tendência global de perda de peso** ao longo do seguimento, evidenciada por maior proporção de consultas classificadas como perda em relação ao basal. Este resultado sugere que, apesar das flutuações entre visitas, o acompanhamento clínico contribuiu para um saldo positivo na redução de peso em termos cumulativos.\
 > A diferença entre os dois enfoques analíticos é relevante. A comparação visita a visita é mais sensível a pequenas variações, que podem representar tanto mudanças reais quanto ruído de mensuração. Já a comparação acumulada com o peso basal tende a capturar melhor o efeito do seguimento como um todo, sendo clinicamente mais intuitiva para avaliar impacto do tratamento.\
 > Do ponto de vista clínico, a predominância de perda de peso acumulada sugere benefício do acompanhamento, mas a presença consistente de oscilações reforça a necessidade de estratégias para manutenção do peso e prevenção do reganho.
@@ -1489,7 +1498,7 @@ traj_pos_meta <- obese %>%
   ungroup()
 ```
 
-Aqui eu defino a trajetória pós-meta: para quem atingiu ≥5%, guardo todas as observações da data da meta em diante e calculo o tempo desde a meta em semanas/meses. Também crio indicadores lógicos úteis: maint_ge5 (mantém ≥5%) e below5 (caiu abaixo de 5%).
+Aqui eu defino a trajetória pós-meta (`traj_pos_meta`): para quem atingiu ≥5%, guardo todas as observações da data da meta em diante e calculo o tempo desde a meta em semanas (`weeks_since_t0`) e meses (`months_since_t0`). Também crio indicadores lógicos úteis: `maint_ge5` (mantém ≥5%) e `below5` (caiu abaixo de 5%).
 
 ```{r}
 #| label: primeira-queda-abaixo5
@@ -1531,7 +1540,7 @@ reganho_primeiro <- traj_pos_meta %>%
   )
 ```
 
-Defino o primeiro evento de reganho: queda abaixo de 5% após atingir a meta (com ou sem confirmação de duas medidas consecutivas). Produzo um dataset por paciente com indicador de evento (event) e tempo até o evento (em meses) ou tempo de censura (se nunca reganhou até a última observação).
+Defino o primeiro evento de reganho: queda abaixo de 5% após atingir a meta (com ou sem confirmação de duas medidas consecutivas). Produzo um dataset com indicador de evento (`event`) e tempo até o evento em meses (`t_event_date`) ou tempo de censura (se nunca reganhou até a última observação).
 
 ```{r}
 #| label: medidas-frequencia-reganho
@@ -1594,7 +1603,7 @@ Foi essa definição que usamos:\
 - a curva de Kaplan–Meier de manutenção,\
 - e o tempo mediano até o evento (24,2 meses).\
 	
-> resultados:\
+> Resultados:\
 > Frequência de reganho (primeira queda abaixo de 5%)\
 - 37,6% dos pacientes que atingiram ≥5% voltaram a ficar abaixo desse limiar em algum momento.\
 - A taxa de incidência foi de 33,5 por 100 pessoa-anos.\
@@ -1658,8 +1667,6 @@ reganho50_primeiro <- momento_perda5 %>%
       NA_real_
     )
   )
-
-reganho50_primeiro
 
 # Sumário da magnitude
 sum_magnitude <- tibble::tibble(
@@ -1748,30 +1755,11 @@ Neste bloco eu capturo dois comportamentos pós-meta que são clinicamente inter
 	1.	Oscilações (quantas vezes cruza o limiar de 5%), uma proxy de “ioiô”;\
 	2.	Proporção do tempo em manutenção (≥5%), estimada por segmentos entre consultas.\
 
-O que foi feito e por quê:\
-- Definição do evento clínico de reganho: queda abaixo de 5% após atingir a meta (com opção de duas medidas consecutivas para reduzir ruído).\
-- Medidas de frequência:\
-    - Proporção que reganhou alguma vez (cumulativa).\
-    - Taxa de incidência por 100 pessoa‑anos (tempo até o primeiro reganho).\
-    - Sobrevida de manutenção em 6 e 12 meses (Kaplan–Meier), com mediana do tempo até reganho quando aplicável.\
-- Magnitude do reganho:\
-    - Reganho ≥50% do peso perdido em relação ao nadir (tempo e proporção).\
-- Padrão longitudinal:\
-    - Oscilações (cruzamentos do limiar).\
-    - Proporção do tempo em manutenção (≥5%).\
-
-Essas métricas cobrem frequência, tempo e magnitude, fornecendo uma visão clínica completa do comportamento do grupo que atingiu ≥5% de perda.
-
-Se quiser, eu preparo:
-	1.	uma tabela única consolidando essas métricas,
-	2.	e um parágrafo de resultados já redigido (com placeholders para números) para colar no artigo.
-	
 > Resultados:\
 > Padrão longitudinal (oscilação e tempo em manutenção)\
 > - O número de oscilações (entrar e sair do limiar de 5%) foi baixo: mediana de 0 (IIQ 0–1).
 > - Em termos de tempo, os pacientes passaram 78% (IIQ 44–100%) do seguimento mantendo ≥5% de perda.
-
-Esses achados sugerem que, embora uma parte dos pacientes reganhe peso após atingir a meta de ≥5%, a maioria consegue manter esse benefício por um tempo prolongado. Aproximadamente 2 em cada 3 mantêm a perda em 12 meses, e o tempo até reganho substancial (≥50% do perdido) é relativamente longo (mediana 17 meses). O padrão de oscilação foi pouco frequente, reforçando que a trajetória predominante é de manutenção estável, ao menos durante parte importante do acompanhamento.
+> Esses achados sugerem que, embora uma parte dos pacientes reganhe peso após atingir a meta de ≥5%, a maioria consegue manter esse benefício por um tempo prolongado. Aproximadamente 2 em cada 3 mantêm a perda em 12 meses, e o tempo até reganho substancial (≥50% do perdido) é relativamente longo (mediana 17 meses). O padrão de oscilação foi pouco frequente, reforçando que a trajetória predominante é de manutenção estável, ao menos durante parte importante do acompanhamento.
 
 > Resultados combinados das 3 análises:\
 > Entre os 221 pacientes que atingiram perda ≥5% em relação ao peso inicial, 83 (37,6%) apresentaram reganho em algum momento do seguimento, resultando em uma taxa de incidência de 33,5 por 100 pessoa-anos. A probabilidade de manutenção da perda ≥5% foi de 83% aos 6 meses e de 64,4% aos 12 meses, com tempo mediano até o reganho de 24,2 meses. Quando considerada a magnitude do reganho em relação ao nadir, 66 indivíduos (29,9%) recuperaram ≥50% do peso previamente perdido, com tempo mediano de 17,2 meses até esse evento. O padrão longitudinal mostrou baixa frequência de oscilações em torno do limiar de 5% (mediana 0; IIQ 0–1), e a proporção do tempo em que os pacientes permaneceram com perda ≥5% foi elevada (mediana 78%; IIQ 44–100%). Esses resultados indicam que, embora parte dos pacientes experimente reganho, a maioria consegue manter a perda clinicamente relevante por períodos prolongados, com relativa estabilidade durante o acompanhamento.\
@@ -1819,6 +1807,7 @@ ggsurvplot(
   ggtheme = theme_minimal(base_size = 12)
 )
 ```
+
 > Legenda:\
 > A curva de Kaplan–Meier para manutenção da perda ≥5% mostra uma probabilidade elevada de sustentar a meta de perda de 5% nos primeiros meses após o alcance, com queda progressiva ao longo do seguimento. Aproximadamente 83% dos pacientes mantinham a perda em 6 meses e 64% em 12 meses. A mediana do tempo até o reganho foi de 24,2 meses, indicando que metade dos pacientes manteve o benefício clínico por pelo menos dois anos. A curva evidencia ainda que, embora haja declínio gradual, uma proporção considerável de indivíduos preservou a perda ≥5% até três anos de acompanhamento.\
 
@@ -1965,16 +1954,41 @@ resumo_janelas <- atingiu_por_janela %>%
   ) %>%
   ungroup()
 
-resumo_janelas
+knitr::kable(
+  resumo_janelas,
+  digits = 3,
+  col.names = c("Janela", "n", "N total", "Proporção", "IC95% inferior", "IC95% superior"),
+  caption = "Distribuição do primeiro alcance de perda ≥5% por janela de tempo entre os que atingiram a meta.",
+  align = c("l", "c", "c", "c", "c", "c")
+)
 ```
 
 Esse código agora cria sete categorias de tempo (≤6m, 6–12m, 12–18m, 18–24m, 24–30m, 30–36m, >36m) para identificar em qual janela os pacientes que atingiram ≥5% chegaram à meta. A tabela resumo_janelas mostra n, proporção e IC95% em cada faixa.
+
+> Interpretação:\
+Entre os **221 pacientes que atingiram perda ≥5%**, a distribuição do **primeiro alcance** da meta ocorreu de forma heterogênea ao longo do seguimento:\
+>\
+> - **≤6 meses:** 30,3% (IC95%: 24,3–36,8)\
+> - **6–12 meses:** 28,5% (IC95%: 22,7–34,9)\
+> - **12–18 meses:** 13,1% (IC95%: 9,0–18,3)\
+> - **18–24 meses:** 7,2% (IC95%: 4,2–11,5) \
+> - **24–30 meses:** 4,5% (IC95%: 2,2–8,2)\
+> - **30–36 meses:** 3,6% (IC95%: 1,6–7,0)\
+> - **>36 meses:** 12,7% (IC95%: 8,6–17,8)\
+
+> Resultados:\
+> Mais da metade dos pacientes respondeu em até **12 meses** (58,8%), com maior concentração nos primeiros 6 meses (30,3%). Entretanto, uma proporção não desprezível (≈41,2%) atingiu a meta após 12 meses, incluindo 12,7% somente após 36 meses de seguimento.\
+
+> Discussão:\ 
+> Esses achados sugerem que, embora o período de **até 12 meses** seja o mais produtivo para identificar respondedores precoces, ainda há uma parcela significativa de **respondedores tardios** que podem se beneficiar de um seguimento prolongado. Do ponto de vista clínico e de gestão ambulatorial, isso sugere que uma **alta precoce baseada apenas na ausência de resposta em 12 meses** poderia descartar pacientes com chance real de atingir benefício clínico relevante em períodos posteriores.\
 
 ```{r}
 #| label: grafico-atingiu-por-janela
 #| fig.cap: "Distribuição do primeiro alcance de perda ≥5% por janela de tempo entre os que atingiram a meta (proporção e IC95%)."
 #| fig.width: 6
 #| fig.height: 4
+#| message: false
+#| warning: false
 
 library(ggplot2)
 library(scales)
@@ -2006,7 +2020,10 @@ ggplot(plot_janelas, aes(x = janela, y = prop)) +
   )
 ```
 
-O gráfico apresenta, entre os que atingiram ≥5%, a proporção que o fez até 6 meses, entre 6–12 meses ou após 12 meses, com IC95% por categoria. Isso responde diretamente “em que janela os respondedores tendem a atingir a meta”.
+> Legenda:\
+> Distribuição do primeiro alcance de perda ≥5% por janelas de tempo entre os pacientes que atingiram a meta. As barras representam a proporção (%) de respondedores em cada intervalo, com intervalos de confiança de 95%. Os valores sobre as colunas indicam a proporção e o número absoluto de pacientes (n) em cada grupo.
+
+### Probabilidade cumulativa de atingir ≥5%
 
 ```{r}
 #| label: cuminc-atingir-5-varias-janelas
@@ -2060,10 +2077,21 @@ tabela_cuminc_fmt <- tabela_cuminc %>%
   ) %>%
   select(`Tempo (meses)` = tempo_meses, `Prob (%)`, `IC95% inferior`, `IC95% superior`)
 
-tabela_cuminc_fmt
+knitr::kable(
+  tabela_cuminc_fmt,
+  digits = 3,
+  caption = "Probabilidade cumulativa de atingir perda ≥5% em múltiplos tempos após o início do acompanhamento.",
+  align = c("c", "c", "c", "c")
+)
 ```
 
 Esse chunk calcula, para toda a coorte com censura, a probabilidade cumulativa de atingir ≥5% em 6, 12, 18, 24, 30 e 36 meses, com IC95% (Greenwood via survfit). O argumento extend = TRUE mantém o último valor de S(t) caso o tempo solicitado ultrapasse o último tempo observado.
+
+> Resultados:\
+> Na análise de tempo até evento com censura (Kaplan–Meier), a probabilidade cumulativa de atingir perda ≥5% aumentou progressivamente ao longo do seguimento. Aos 6 meses, cerca de 12,8% (IC95%: 9,8–15,6) dos pacientes já haviam alcançado a meta. Esse percentual subiu para 27,6% (IC95%: 23,4–31,6) aos 12 meses, 36,0% (IC95%: 31,2–40,5) aos 18 meses, e 41,5% (IC95%: 36,3–46,2) aos 24 meses.\
+> No seguimento mais prolongado, as chances continuaram a crescer, atingindo 45,6% (IC95%: 40,1–50,6) aos 30 meses  
+e 49,8% (IC95%: 43,9–55,0) aos 36 meses de acompanhamento.\
+> Interpretação: aproximadamente metade da coorte atingiu perda ≥5% até três anos de seguimento. O maior ganho em probabilidade ocorreu nos primeiros 12 meses, mas uma fração importante de pacientes ainda atingiu a meta após esse período, reforçando a relevância do acompanhamento prolongado.\
 
 ```{r}
 #| label: plot-cuminc-atingir-5-varias-janelas
@@ -2097,6 +2125,276 @@ ggplot(km_step, aes(x = time, y = cuminc)) +
 ```
 O gráfico mostra a curva cumulativa (1 − S(t)) e destaca, com pontos e IC95%, os marcos de 6, 12, 18, 24, 30 e 36 meses. Assim, você visualiza tanto a evolução contínua quanto os pontos de decisão úteis para o fluxo ambulatorial.
 
+> Legenda:\
+> Curva de Kaplan–Meier mostrando a probabilidade cumulativa de atingir perda ≥5% ao longo do tempo, considerando a censura dos pacientes que não alcançaram o evento. Os pontos pretos na curva indicam os marcos de 6, 12, 18, 24, 30 e 36 meses, com seus respectivos intervalos de confiança de 95%, evidenciando a progressão contínua da proporção de pacientes que atingiram a meta durante o seguimento.
+
+### Probabilidade condicional de atingir ≥5% em janelas sucessivas, dado que ainda não atingiu no início da janela
+
+```{r}
+#| label: prob-cond-intervalos
+
+# Objetivo: estimar probabilidades CONDICIONAIS por janelas sucessivas:
+# P(atingir ≥5% em (a,b] | ainda não atingiu até a)
+# a partir da curva de sobrevivência (KM) para "tempo até atingir ≥5%".
+
+library(dplyr)
+library(survival)
+library(tibble)
+library(ggplot2)
+library(scales)
+
+# --- (re)construir objeto de tempo da coorte inteira (evento = atingir ≥5%) ---
+tempo_evento <- momento_perda5 %>%
+  transmute(record_id, t_event_meses = week_consultation / 4.345, status = 1)
+
+tempo_cens <- obese %>%
+  group_by(record_id) %>%
+  summarize(t_last_meses = max(week_consultation, na.rm = TRUE) / 4.345, .groups = "drop")
+
+coorte_tempo <- tempo_cens %>%
+  left_join(tempo_evento, by = "record_id") %>%
+  mutate(
+    time   = ifelse(!is.na(t_event_meses), t_event_meses, t_last_meses),
+    status = ifelse(!is.na(t_event_meses), 1, 0)  # 1 = atingiu; 0 = censurado
+  )
+
+fit_atingir <- survfit(Surv(time, status) ~ 1, data = coorte_tempo, conf.type = "log")
+
+# --- Janelas desejadas (em meses) ---
+# vamos calcular P((0,6] | T>0), P((6,12] | T>6), ..., P((30,36] | T>30) e P((36, fim] | T>36)
+cutpoints <- c(0, 6, 12, 18, 24, 30, 36)
+t_end <- max(coorte_tempo$time, na.rm = TRUE)
+
+# Sobrevivência (S) nos pontos de corte e no fim do seguimento
+S_pts <- summary(fit_atingir, times = c(cutpoints, t_end), extend = TRUE)$surv
+# separar: S nos cortes e S no fim
+S_cuts <- S_pts[seq_len(length(cutpoints))]
+S_end  <- S_pts[length(S_pts)]
+
+# Probabilidade condicional por intervalo (a,b]: (S(a) - S(b)) / S(a)
+# Para o último ">36m": (S(36) - S(end)) / S(36)
+p_cond <- (S_cuts[-length(S_cuts)] - S_cuts[-1]) / S_cuts[-length(S_cuts)]
+p_last <- (S_cuts[length(S_cuts)] - S_end) / S_cuts[length(S_cuts)]
+p_all  <- c(p_cond, p_last)
+
+# Rótulos das janelas
+labels <- c("≤6m","6–12m","12–18m","18–24m","24–30m","30–36m",">36m")
+
+# Número em risco no início de cada janela (útil para contexto)
+sum_risk <- summary(fit_atingir, times = cutpoints, extend = TRUE)
+n_risk   <- sum_risk$n.risk
+
+# Tabela final
+tabela_prob_cond <- tibble(
+  `Janela` = labels,
+  `Em risco no início (n)` = n_risk,
+  `Prob. condicional` = p_all,
+  `Prob. condicional (%)` = 100 * p_all
+)
+
+# Tabela formatada
+tabela_prob_cond_fmt <- tabela_prob_cond %>%
+  mutate(
+    `Prob. condicional (%)` = sprintf("%.1f", `Prob. condicional (%)`)
+  ) %>%
+  select(Janela, `Em risco no início (n)`, `Prob. condicional (%)`)
+
+knitr::kable(
+  tabela_prob_cond_fmt,
+  caption = "Probabilidade condicional de atingir perda ≥5% em janelas sucessivas, entre os que ainda não atingiram até o início da janela.",
+  col.names = c("Janela", "Em risco no início (n)", "Prob. condicional (%)"),
+  align = c("l", "c", "c")
+)
+```
+
+O código acima calcula, a partir da curva de Kaplan–Meier, a probabilidade condicional de atingir a meta em cada intervalo dado que ainda não havia atingido no início do intervalo.
+
+> **Resultados:**\
+> A análise de probabilidades condicionais mostrou que **12,8%** dos pacientes atingiram perda ≥5% nos **primeiros 6 meses** de seguimento. Entre aqueles que não haviam alcançado a meta até esse ponto, a probabilidade de atingi-la no intervalo **6–12 meses** foi de **17,0%**. Já entre 12–18 meses, a chance condicional foi de **11,6%**, caindo para **8,6%** entre **18–24 meses**, **7,1%** entre **24–30 meses** e **7,6%** entre **30–36 meses**.  
+> A partir de 36 meses, a probabilidade condicional foi de **45,8%** entre os pacientes que permaneciam sem resposta até então.\
+
+#### IC95% por bootstrap de pacientes
+
+```{r}
+#| label: prob-cond-intervalos-bootstrap
+#| message: false
+#| warning: false
+
+# Probabilidades CONDICIONAIS por janelas sucessivas:
+# P(atingir ≥5% em (a,b] | ainda não atingiu até a), com IC95% via bootstrap por paciente.
+
+library(dplyr)
+library(survival)
+library(tibble)
+library(purrr)
+
+# --- 1) Reconstruir coorte em formato "tempo até evento" (uma linha por paciente) ---
+tempo_evento <- momento_perda5 %>%
+  transmute(record_id, t_event_meses = week_consultation / 4.345, status = 1)
+
+tempo_cens <- obese %>%
+  group_by(record_id) %>%
+  summarize(t_last_meses = max(week_consultation, na.rm = TRUE) / 4.345, .groups = "drop")
+
+coorte_tempo <- tempo_cens %>%
+  left_join(tempo_evento, by = "record_id") %>%
+  mutate(
+    time   = ifelse(!is.na(t_event_meses), t_event_meses, t_last_meses),
+    status = ifelse(!is.na(t_event_meses), 1, 0)  # 1 = atingiu; 0 = censurado
+  )
+
+# --- 2) Função para extrair probabilidades condicionais por intervalo a partir de um objeto survfit ---
+# P((a,b] | T>a) = [S(a) - S(b)] / S(a), onde S(t) = Prob(T > t)
+prob_condicionais <- function(coorte_df, cutpoints) {
+  fit <- survfit(Surv(time, status) ~ 1, data = coorte_df, conf.type = "log")
+  t_end <- max(coorte_df$time, na.rm = TRUE)
+  S_vec <- summary(fit, times = c(cutpoints, t_end), extend = TRUE)$surv
+  S_cuts <- S_vec[seq_len(length(cutpoints))]   # S nos pontos de corte
+  S_end  <- S_vec[length(S_vec)]               # S no fim do seguimento
+  
+  # Evitar divisão por zero quando S(a) ~ 0
+  safe_div <- function(num, den) ifelse(den > 0, num / den, NA_real_)
+  
+  p_cond <- safe_div(S_cuts[-length(S_cuts)] - S_cuts[-1], S_cuts[-length(S_cuts)])  # (0-6], (6-12], ...
+  p_last <- safe_div(S_cuts[length(S_cuts)] - S_end,       S_cuts[length(S_cuts)])   # (>36m até fim)
+  c(p_cond, p_last)
+}
+
+# --- 3) Prob. condicionais no conjunto original ---
+cutpoints <- c(0, 6, 12, 18, 24, 30, 36)
+labels <- c("≤6m","6–12m","12–18m","18–24m","24–30m","30–36m",">36m")
+
+fit_full <- survfit(Surv(time, status) ~ 1, data = coorte_tempo, conf.type = "log")
+n_risk   <- summary(fit_full, times = cutpoints, extend = TRUE)$n.risk
+
+p_orig <- prob_condicionais(coorte_tempo, cutpoints)
+
+tabela_prob_cond <- tibble(
+  Janela = labels,
+  `Em risco no início (n)` = n_risk,
+  `Prob. condicional` = p_orig
+)
+
+# --- 4) IC95% por bootstrap de pacientes (re-amostra record_id com reposição) ---
+set.seed(1234)
+B <- 2000
+
+# índices para bootstrap (amostragem por linha/paciente)
+idx_list <- replicate(B, sample.int(nrow(coorte_tempo), replace = TRUE), simplify = FALSE)
+
+boot_mat <- map_dbl(seq_len(B * length(labels)), function(i) NA_real_) # pré-aloca
+boot_mat <- matrix(NA_real_, nrow = B, ncol = length(labels))
+
+for (b in seq_len(B)) {
+  coorte_boot <- coorte_tempo[idx_list[[b]], , drop = FALSE]
+  boot_mat[b, ] <- prob_condicionais(coorte_boot, cutpoints)
+}
+
+# Intervalos percentis 2.5% e 97.5%
+ci_low  <- apply(boot_mat, 2, quantile, probs = 0.025, na.rm = TRUE)
+ci_high <- apply(boot_mat, 2, quantile, probs = 0.975, na.rm = TRUE)
+
+tabela_prob_cond_ci <- tabela_prob_cond %>%
+  mutate(
+    `IC95% inferior` = ci_low,
+    `IC95% superior` = ci_high,
+    `Prob. condicional (%)` = 100 * `Prob. condicional`,
+    `IC95% inferior (%)` = 100 * `IC95% inferior`,
+    `IC95% superior (%)` = 100 * `IC95% superior`
+  )
+
+tabela_prob_cond_ci
+
+knitr::kable(
+  tabela_prob_cond_ci %>%
+    select(Janela, `Em risco no início (n)`, `Prob. condicional (%)`,
+           `IC95% inferior (%)`, `IC95% superior (%)`),
+  digits = 3,
+  col.names = c("Janela", "Em risco no início (n)", "Prob. condicional (%)",
+                "IC95% inferior (%)", "IC95% superior (%)"),
+  caption = "Probabilidade condicional de atingir perda ≥5% em janelas sucessivas, entre os que ainda não atingiram até o início da janela, com IC95% via bootstrap (B=2000).",
+  align = c("l", "c", "c", "c", "c")
+)
+
+
+```
+
+O gráfico mostra eventos isolados por janela, condicionados à não resposta até o início de cada intervalo — exatamente a pergunta clínica:
+
+- “Qual a chance de atingir ≥5% até 6 meses?” → ≤6m.
+- “Se não atingiu até 6 meses, qual a chance entre 6–12m?” → barra 6–12m.
+- … e assim por diante, inclusive >36m (do mês 36 até o final do seguimento observado).
+
+O chunk calcula as probabilidades condicionais por janela (ex.: qual a chance de atingir entre 6–12 meses dado que não atingiu até 6 meses) e estima IC95% via bootstrap por paciente (B=2000). A tabela final tabela_prob_cond_ci inclui número em risco no início de cada janela, probabilidade condicional e IC95%.
+
+> **Resultados:**\
+> A probabilidade condicional de atingir perda ≥5% variou ao longo das janelas de seguimento.\
+> Nos **primeiros 6 meses**, **12,8%** dos pacientes alcançaram a meta (IC95%: 10,1–15,5).\
+> Entre aqueles que não haviam atingido até então, a chance de alcançá-la entre **6–12 meses** foi de **17,0%** (IC95%: 13,3–20,9).\
+> Já nos intervalos subsequentes, as probabilidades condicionais foram menores: **11,6%** (IC95%: 7,7–15,8) entre **12–18 meses**, **8,6%** (IC95%: 4,7–12,7) entre **18–24 meses**, **7,1%** (IC95%: 3,0–11,4) entre **24–30 meses** e **7,6%** (IC95%: 3,1–13,1) entre **30–36 meses**.\
+> No grupo que permaneceu sem resposta até os **>36 meses**, a probabilidade de atingir a perda mínima clínica foi de **45,8%** (IC95%: 31,1–61,5).\
+> Esses resultados indicam que a maior parte dos respondedores é identificada até os 12 meses, mas há também um subgrupo menor de respondedores tardios, inclusive após longos períodos de acompanhamento.
+
+```{r}
+#| label: plot-prob-cond-intervalos-ci
+#| fig.cap: "Probabilidade condicional de atingir ≥5% por janelas sucessivas, com IC95% bootstrap (B=2000), condicionada a não ter atingido no início de cada janela."
+#| fig.width: 7.5
+#| fig.height: 4.6
+#| message: false
+#| warning: false
+
+library(ggplot2)
+library(scales)
+
+# 1) Prepara a ordem das janelas  
+#    Converte `Janela` em *factor* com níveis definidos
+#    Garante que o gráfico apareça em ordem cronológica no eixo X.
+tabela_prob_cond_ci <- tabela_prob_cond_ci %>%
+  mutate(
+    Janela = factor(
+      Janela,
+      levels = c("≤6m","6–12m","12–18m","18–24m","24–30m","30–36m",">36m")
+    )
+  )
+
+# 2) Ajusta o limite superior do eixo Y  
+#    Define `ylim_top` como o maior valor entre 0,5 (50%) e IC95% superior + 0,05, 
+#    evitando que as barras/erros fiquem cortados e mantendo boa leitura P baixas.
+ylim_top <- max(0.5, max(tabela_prob_cond_ci$`IC95% superior`, na.rm = TRUE) + 0.05)
+
+# 3) Constrói o gráfico de barras com IC95%  
+# - `geom_col()` plota a probabilidade condicional de atingir ≥5% em cada janela, 
+#    condicionada a não ter atingido antes do início da # janela.  
+# - `geom_errorbar()` adiciona as barras de erro com os IC95% bootstrap (B=2000)  
+# - `geom_text()` escreve o rótulo em % sobre cada barra.
+ggplot(tabela_prob_cond_ci, aes(x = Janela, y = `Prob. condicional`)) +
+  geom_col(width = 0.7) +
+  geom_errorbar(
+    aes(ymin = `IC95% inferior`, ymax = `IC95% superior`),
+    width = 0.12, linewidth = 0.7
+  ) +
+  geom_text(
+    aes(label = percent(`Prob. condicional`, accuracy = 0.1)),
+    vjust = -0.4, size = 3.2
+  ) +
+# 4) Formata eixos e tema  
+# - `scale_y_continuous()` mostra o eixo Y em percentuais e aplica os limites calculados.  
+# - `labs()` rotula os eixos deixando claro que o evento é “atingir ≥5%”.  
+# - `theme_minimal()` e a remoção da grade menor deixam o gráfico limpo para publicação.
+  scale_y_continuous(labels = percent_format(accuracy = 1), limits = c(0, ylim_top)) +
+  labs(x = "Janela de tempo", y = "Probabilidade condicional (evento = atingir ≥5%)") +
+  theme_minimal(base_size = 12) +
+  theme(panel.grid.minor = element_blank())
+
+```
+
+O código plota, em ordem cronológica, as probabilidades condicionais por intervalos sucessivos (≤6m, 6–12m, …, >36m) de atingir perda ≥5%, dado que o paciente ainda não havia atingido antes do início de cada janela. Cada barra traz seu IC95% (bootstrap) e o rótulo percentual, permitindo leitura direta e comparável entre janelas.
+
+> Legenda:\
+> Probabilidade **condicional** de atingir perda ≥5% em janelas sucessivas de tempo, **condicionada a não ter atingido a meta no início da janela**. As barras representam as estimativas pontuais e as linhas verticais os **intervalos de confiança de 95% (bootstrap, B=2000)**. Observa-se maior probabilidade nos primeiros 12 meses e novamente após os 36 meses de acompanhamento.
+
+### 3.4. Comparar a PERDA MÁXIMA (%) entre as 7 janelas do 1º alcance (≤6m, 6–12m, 12–18m, 18–24m, 24–30m, 30–36m, >36m)
+	
 ```{r}
 #| label: perda-maxima-por-janela-7
 
@@ -2160,6 +2458,19 @@ list(resumo_perda_max = resumo_perda_max, kruskal_wallis = kw_test)
 
 O código acima estende a comparação da perda máxima (%) para as 7 janelas definidas, calcula o teste de Kruskal–Wallis e produz uma tabela com n, mediana e IC95% (bootstrap) por janela.
 
+A análise da **perda máxima de peso (%)** ao longo do seguimento, estratificada pela **janela em que o paciente atingiu pela primeira vez ≥5%**, mostrou que as **medianas foram semelhantes** entre os grupos:  
+- **≤6m:** 9,9% (IC95%: 8,0–11,3)  
+- **6–12m:** 10,0% (IC95%: 8,1–12,1)  
+- **12–18m:** 10,1% (IC95%: 7,4–12,7)  
+- **18–24m:** 7,6% (IC95%: 5,6–12,0)  
+- **24–30m:** 8,7% (IC95%: 5,8–13,9)  
+- **30–36m:** 9,4% (IC95%: 6,9–12,4)  
+- **>36m:** 9,8% (IC95%: 7,8–13,3)  
+
+O **teste de Kruskal–Wallis** não identificou diferenças estatisticamente significativas entre as janelas (χ²=2,32; gl=6; p=0,888).  
+
+**Interpretação:** independentemente do momento em que os pacientes alcançaram a perda inicial de ≥5%, a **perda máxima subsequente foi semelhante** entre os grupos, sugerindo que o padrão de resposta em termos de perda máxima é relativamente constante, seja para respondedores precoces ou tardios.
+
 ```{r}
 #| label: grafico-perda-maxima-por-janela-7
 #| fig.cap: "Perda máxima (%) ao longo do seguimento, estratificada pela janela do primeiro alcance de ≥5% (mediana e IC95% bootstrap)."
@@ -2182,8 +2493,13 @@ ggplot(resumo_perda_max, aes(x = janela, y = mediana)) +
 
 O gráfico resume a perda máxima por janela do primeiro alcance de ≥5%, mostrando medianas e IC95% por bootstrap.
 
+> Legenda:\
+> Perda máxima de peso (%) ao longo do seguimento, estratificada pela **janela em que ocorreu o primeiro alcance de perda ≥5%**.  
+As barras representam as **medianas** e as linhas verticais os **intervalos de confiança de 95% (IC95%) obtidos por bootstrap**.  
+Observa-se que a perda máxima foi semelhante entre as diferentes janelas de tempo, sem diferenças estatisticamente significativas.\
+
 ## 4. Grupo sem perda ≥5%
 
-### 4.1. Identificar tempo de seguimento e consulta com maior perda observada.
+### 4.1. Identificar estimativas associadas a maior perda de peso observada: percentual de perda máxima, tempo desde o seguimento e consulta em que atingiu perda máxima
 
 ### 4.2. Descrever o ganho de peso após esse momento.

@@ -52,6 +52,7 @@ format:
     smooth-scroll: true
     citations-hover: true
     reference-location: margin
+    self-contained: true
 
   pdf:
     documentclass: article
@@ -62,8 +63,9 @@ format:
     fig-pos: "H"
 
   docx:
-    reference-doc: "template.docx"
-    number-sections: true
+    #reference-doc: "template.docx"
+    #number-sections: true
+    toc: true
 
   markdown:
     variant: gfm

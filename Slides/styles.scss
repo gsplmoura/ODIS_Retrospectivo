@@ -1,0 +1,70 @@
+/*-- scss:defaults --*/
+
+// Theme-specific fonts
+@import url(https://fonts.googleapis.com/css?family=Quicksand:400,700,400italic,700italic);
+@import url(https://fonts.googleapis.com/css?family=Open+Sans:400italic,700italic,400,700);
+
+// Override theme settings
+$font-family-sans-serif: "Open Sans", sans-serif !default;
+$body-color: #333 !default;
+$presentation-font-size-root: 22px !default;
+$presentation-heading-font: "Quicksand", sans-serif !default;
+$presentation-heading-color: $body-color !default;
+//$presentation-heading-letter-spacing: 0em !default;
+$presentation-heading-text-shadow: none !default;
+$presentation-h1-font-size: 2.0em !default;
+$presentation-h2-font-size: 1.8em !default;
+$presentation-h3-font-size: 1.6em !default;
+$presentation-h4-font-size: 1.4em !default;
+$presentation-heading-text-transform: capitalize !default;
+$presentation-heading-font-weight: normal !default; // from settings.scss
+$body-bg: #f7fbfc !default;
+$link-color: #3b759e !default;
+$selection-bg: #134674 !default;
+$overlayElementBgColor: 0, 0, 0 !default;
+$overlayElementFgColor: 240, 240, 240 !default;
+
+
+// Change text colors against dark slide backgrounds
+$dark-bg-text-color: #fff !default;
+
+// code blocks
+$code-block-border-color: lighten($link-color, 30%) !default;
+$code-block-bg: transparent !default;
+
+/*-- scss:rules --*/
+
+// Fix links so they are not cut off
+.reveal a {
+  line-height: 1.3em;
+}
+
+/*-- scss:mixins --*/
+
+// Background generator
+@mixin bodyBackground() {
+  @include radial-gradient(#add9e4, #f7fbfc);
+}
+
+.reveal .slides {
+  strong, b {
+    font-weight: 500;
+    color: #663344;
+  }
+}
+
+.reveal .logo {
+  width: 150px !important; // increase size
+  top: 10px;
+  right: 10px;
+  position: fixed;
+}
+
+.reveal .smaller {
+  font-size: 0.75em;
+  color: #666666;
+}
+
+.text-muted {
+  color: lighten($body-color, 50%);
+}
